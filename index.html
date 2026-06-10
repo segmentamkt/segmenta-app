@@ -461,11 +461,13 @@ async function crearAcceso(){
   const result=document.getElementById('acceso-result');
   const btn=document.getElementById('acceso-btn');
   if(!email||!pass){alert('Email y contraseña requeridos');return;}
-  if(pass.length<8){alert('La contraseña debe tener mínimo 8 caracteres');return;}
+  if(pass.length<8){alert('Mínimo 8 caracteres');return;}
   btn.textContent='Creando...';btn.disabled=true;
-  const {data,error}=await sb.auth.admin?
-    sb.auth.admin.createUser({email,password:pass,email_confirm:true}):
-    await sb.auth.signUp({email,password:pass});
+  const {data,error}=await sb.rpc('create_client_user',{
+    user_email:email,
+    user_password:pass,
+    client_id:cliId
+  });
   if(error){
     result.style.display='block';
     result.style.background='#FCEBEB';
@@ -474,13 +476,12 @@ async function crearAcceso(){
     btn.textContent='Crear acceso';btn.disabled=false;
     return;
   }
-  const userId=data?.user?.id;
-  if(userId){await sb.from('clients').update({user_id:userId}).eq('id',cliId);}
   result.style.display='block';
   result.style.background='#EAF3DE';
   result.style.color='#27500A';
-  result.innerHTML=`✓ Acceso creado exitosamente<br><b>Email:</b> ${email}<br><b>URL:</b> segmenta-app.vercel.app`;
+  result.innerHTML=`✓ Acceso creado<br><b>Email:</b> ${email}<br><b>Clave:</b> ${pass}<br><b>URL:</b> segmenta-app.vercel.app`;
   btn.textContent='Crear acceso';btn.disabled=false;
+  if(currentClienteId)abrirCliente(currentClienteId);
 }
 
 async function renderDashboard(){
