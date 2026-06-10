@@ -276,6 +276,16 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
   <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end"><button class="btn-out" onclick="closeModal('m-cliente')">Cancelar</button><button class="btn" onclick="saveCliente()">Guardar</button></div>
 </div></div>
 
+<div class="modal-bg" id="m-acceso"><div class="modal">
+  <div class="mh"><h3>🔑 Crear acceso para cliente</h3><button class="btn-out" onclick="closeModal('m-acceso')">✕</button></div>
+  <input type="hidden" id="acceso-cli-id">
+  <p style="font-size:12px;color:#888;margin-bottom:14px">El cliente podrá entrar a su portal con estas credenciales.</p>
+  <span class="fl">Email del cliente *</span><input type="email" id="acceso-email" placeholder="cliente@empresa.com">
+  <span class="fl">Contraseña *</span><input type="password" id="acceso-pass" placeholder="Mínimo 8 caracteres">
+  <div id="acceso-result" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:12px"></div>
+  <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end"><button class="btn-out" onclick="closeModal('m-acceso')">Cancelar</button><button class="btn" onclick="crearAcceso()" id="acceso-btn">Crear acceso</button></div>
+</div></div>
+
 <div class="modal-bg" id="m-caja"><div class="modal">
   <div class="mh"><h3 id="m-caja-title">Registrar movimiento</h3><button class="btn-out" onclick="closeModal('m-caja')">✕</button></div>
   <input type="hidden" id="caja-edit-id">
@@ -444,6 +454,35 @@ async function psels(){
 }
 function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
 
+async function crearAcceso(){
+  const cliId=document.getElementById('acceso-cli-id').value;
+  const email=document.getElementById('acceso-email').value.trim();
+  const pass=document.getElementById('acceso-pass').value;
+  const result=document.getElementById('acceso-result');
+  const btn=document.getElementById('acceso-btn');
+  if(!email||!pass){alert('Email y contraseña requeridos');return;}
+  if(pass.length<8){alert('La contraseña debe tener mínimo 8 caracteres');return;}
+  btn.textContent='Creando...';btn.disabled=true;
+  const {data,error}=await sb.auth.admin?
+    sb.auth.admin.createUser({email,password:pass,email_confirm:true}):
+    await sb.auth.signUp({email,password:pass});
+  if(error){
+    result.style.display='block';
+    result.style.background='#FCEBEB';
+    result.style.color='#791F1F';
+    result.textContent='Error: '+error.message;
+    btn.textContent='Crear acceso';btn.disabled=false;
+    return;
+  }
+  const userId=data?.user?.id;
+  if(userId){await sb.from('clients').update({user_id:userId}).eq('id',cliId);}
+  result.style.display='block';
+  result.style.background='#EAF3DE';
+  result.style.color='#27500A';
+  result.innerHTML=`✓ Acceso creado exitosamente<br><b>Email:</b> ${email}<br><b>URL:</b> segmenta-app.vercel.app`;
+  btn.textContent='Crear acceso';btn.disabled=false;
+}
+
 async function renderDashboard(){
   const [{data:clients},{data:caja},{data:tareas}]=await Promise.all([sb.from('clients').select('*').order('name'),sb.from('caja_transactions').select('*').order('tx_date',{ascending:false}).limit(5),sb.from('tasks').select('*').eq('done',false)]);
   const allCaja=await sb.from('caja_transactions').select('type,amount');
@@ -505,7 +544,8 @@ async function abrirCliente(id){
 }
 
 function renderDetResumen(c){
-  document.getElementById('dt-resumen').innerHTML=`<div class="g2" style="margin-bottom:14px"><div class="card" style="margin:0"><div class="ch"><span class="ct">Información</span><button class="bi" onclick="editClienteActual()">✏ Editar</button></div><div class="tx-row"><div style="color:#888;font-size:11px">Empresa</div><div style="font-weight:500">${c.name}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Sector</div><div>${c.sector||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Contacto</div><div>${c.contact_name||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Teléfono</div><div>${c.contact_phone||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Email</div><div>${c.contact_email||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Próx. pago</div><div style="color:${c.status==='expiring'?'#854F0B':'inherit'}">${fd(c.next_payment_date)}</div></div>${c.notes?`<div style="margin-top:10px;padding:10px;background:#f8f7f4;border-radius:8px;font-size:12px;color:#666">${c.notes}</div>`:''}</div><div class="card" style="margin:0"><div class="ch"><span class="ct">Acciones rápidas</span></div><button class="btn" style="width:100%;margin-bottom:8px" onclick="document.getElementById('tar-cli-id').value='${c.id}';document.getElementById('tar-tipo').value='client';openModal('m-tarea')">+ Tarea para el cliente</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('tar-cli-id').value='${c.id}';document.getElementById('tar-tipo').value='internal';openModal('m-tarea')">+ Tarea interna</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('inf-cli').value='${c.id}';openModal('m-informe')">+ Informe semanal</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('co-cli').value='${c.id}';openModal('m-contenido')">+ Programar contenido</button><button class="btn-out" style="width:100%" onclick="document.getElementById('proy-cli-id').value='${c.id}';openModal('m-proyeccion')">+ Agregar proyección</button></div></div>`;
+  const tieneAcceso=c.user_id?true:false;
+  document.getElementById('dt-resumen').innerHTML=`<div class="g2" style="margin-bottom:14px"><div class="card" style="margin:0"><div class="ch"><span class="ct">Información</span><button class="bi" onclick="editClienteActual()">✏ Editar</button></div><div class="tx-row"><div style="color:#888;font-size:11px">Empresa</div><div style="font-weight:500">${c.name}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Sector</div><div>${c.sector||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Contacto</div><div>${c.contact_name||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Teléfono</div><div>${c.contact_phone||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Email</div><div>${c.contact_email||'—'}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Próx. pago</div><div style="color:${c.status==='expiring'?'#854F0B':'inherit'}">${fd(c.next_payment_date)}</div></div><div class="tx-row"><div style="color:#888;font-size:11px">Acceso portal</div><div>${tieneAcceso?'<span class="bdg bg">✓ Tiene acceso</span>':'<span class="bdg br">Sin acceso</span>'}</div></div>${c.notes?`<div style="margin-top:10px;padding:10px;background:#f8f7f4;border-radius:8px;font-size:12px;color:#666">${c.notes}</div>`:''}</div><div class="card" style="margin:0"><div class="ch"><span class="ct">Acciones rápidas</span></div><button class="btn" style="width:100%;margin-bottom:8px" onclick="document.getElementById('tar-cli-id').value='${c.id}';document.getElementById('tar-tipo').value='client';openModal('m-tarea')">+ Tarea para el cliente</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('tar-cli-id').value='${c.id}';document.getElementById('tar-tipo').value='internal';openModal('m-tarea')">+ Tarea interna</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('inf-cli').value='${c.id}';openModal('m-informe')">+ Informe semanal</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('co-cli').value='${c.id}';openModal('m-contenido')">+ Programar contenido</button><button class="btn-out" style="width:100%;margin-bottom:8px" onclick="document.getElementById('proy-cli-id').value='${c.id}';openModal('m-proyeccion')">+ Agregar proyección</button><button class="btn-out" style="width:100%;background:#FFF0DD;border-color:#FF8C00;color:#CC7000" onclick="document.getElementById('acceso-cli-id').value='${c.id}';document.getElementById('acceso-email').value='${c.contact_email||''}';document.getElementById('acceso-result').style.display='none';openModal('m-acceso')">🔑 ${tieneAcceso?'Cambiar acceso cliente':'Crear acceso cliente'}</button></div></div>`;
 }
 
 async function editClienteActual(){
@@ -687,7 +727,6 @@ async function toggleTarea(id,val,el){
   await sb.from('tasks').update({done:val}).eq('id',id);
   el.classList.toggle('done',val);el.innerHTML=val?'✓':'';
   toast(val?'Completada ✓':'Reabierta');
-  setTimeout(()=>{if(currentClienteId){}else renderTareas();},300);
 }
 
 async function delTarea(id){if(!confirm('¿Eliminar?'))return;await sb.from('tasks').delete().eq('id',id);toast('Eliminado');if(currentClienteId){renderDetTareas('client');renderDetTareas('internal');}else renderTareas();}
