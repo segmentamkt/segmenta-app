@@ -496,7 +496,6 @@ async function crearAcceso(){
   btn.textContent='Crear acceso';btn.disabled=false;
   if(currentClienteId)abrirCliente(currentClienteId);
 }
-
 async function renderDashboard(){
   const [{data:clients},{data:caja},{data:tareas}]=await Promise.all([sb.from('clients').select('*').order('name'),sb.from('caja_transactions').select('*').order('tx_date',{ascending:false}).limit(5),sb.from('tasks').select('*').eq('done',false)]);
   const allCaja=await sb.from('caja_transactions').select('type,amount');
