@@ -463,19 +463,32 @@ async function crearAcceso(){
   if(!email||!pass){alert('Email y contraseña requeridos');return;}
   if(pass.length<8){alert('Mínimo 8 caracteres');return;}
   btn.textContent='Creando...';btn.disabled=true;
-  const {data,error}=await sb.rpc('create_client_user',{
-    user_email:email,
-    user_password:pass,
-    client_id:cliId
-  });
-  if(error){
+  try{
+    const res=await fetch('https://ejhfersvmjhxzatsobae.supabase.co/auth/v1/admin/users',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqaGZlcnN2bWpoeHphdHNvYmFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDExOTQ2MCwiZXhwIjoyMDk1Njk1NDYwfQ.zJorG2rpbi0r8z5dp3bt6J74C9TKbsJQZ1pzzA7Hsu0',
+        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqaGZlcnN2bWpoeHphdHNvYmFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDExOTQ2MCwiZXhwIjoyMDk1Njk1NDYwfQ.zJorG2rpbi0r8z5dp3bt6J74C9TKbsJQZ1pzzA7Hsu0'
+      },
+      body:JSON.stringify({email,password:pass,email_confirm:true})
+    });
+    const data=await res.json();
+    if(!res.ok){throw new Error(data.message||data.msg||'Error creando usuario');}
+    const userId=data.id;
+    if(userId){await sb.from('clients').update({user_id:userId}).eq('id',cliId);}
+    result.style.display='block';
+    result.style.background='#EAF3DE';
+    result.style.color='#27500A';
+    result.innerHTML=`✓ Acceso creado<br><b>Email:</b> ${email}<br><b>Clave:</b> ${pass}<br><b>URL:</b> segmenta-app.vercel.app`;
+  }catch(e){
     result.style.display='block';
     result.style.background='#FCEBEB';
     result.style.color='#791F1F';
-    result.textContent='Error: '+error.message;
-    btn.textContent='Crear acceso';btn.disabled=false;
-    return;
+    result.textContent='Error: '+e.message;
   }
+  btn.textContent='Crear acceso';btn.disabled=false;
+}
   result.style.display='block';
   result.style.background='#EAF3DE';
   result.style.color='#27500A';
