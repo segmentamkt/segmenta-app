@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="apple-touch-icon" href="penguin-icon.png">
+<link rel="apple-touch-icon" href="penguin-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Segmenta">
 <title>Segmenta — Marketing Digital</title>
@@ -101,6 +101,8 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
 .portal-header{background:linear-gradient(135deg,#181816,#2a2a26);border-radius:14px;padding:24px;margin-bottom:16px;color:#fff}
 .stat-box{background:rgba(255,255,255,.06);border-radius:8px;padding:12px;text-align:center}
 .empty{text-align:center;padding:32px;color:#bbb;font-size:12px}
+.acc-section{margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.08)}
+.acc-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -258,8 +260,8 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
   <div class="fr"><div><span class="fl">Contacto</span><input id="f-contacto"></div><div><span class="fl">Teléfono</span><input id="f-tel"></div></div>
   <div class="fr"><div><span class="fl">Email contacto</span><input id="f-email-cli"></div><div><span class="fl">Próximo pago</span><input type="date" id="f-pago"></div></div>
   <span class="fl">Notas internas</span><textarea id="f-notas" rows="2"></textarea>
-  <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.08)">
-    <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;margin-bottom:8px">🔑 Acceso al portal (opcional)</div>
+  <div class="acc-section">
+    <div class="acc-label">🔑 Acceso al portal (opcional)</div>
     <div class="fr"><div><span class="fl">Email de acceso</span><input type="email" id="f-acceso-email" placeholder="cliente@empresa.com"></div><div><span class="fl">Contraseña</span><input type="password" id="f-acceso-pass" placeholder="Mínimo 8 caracteres"></div></div>
   </div>
   <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end"><button class="btn-out" onclick="closeModal('m-cliente')">Cancelar</button><button class="btn" onclick="saveCliente()">Guardar</button></div>
@@ -350,7 +352,6 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
 <script>
 const SURL='https://ejhfersvmjhxzatsobae.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqaGZlcnN2bWpoeHphdHNvYmFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMTk0NjAsImV4cCI6MjA5NTY5NTQ2MH0.FOyWxsbVrAywAwM9ivobraBMoyw6R3dZ2Q2NlVbSeao';
-const SVCKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqaGZlcnN2bWpoeHphdHNvYmFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDExOTQ2MCwiZXhwIjoyMDk1Njk1NDYwfQ.zJorG2rpbi0r8z5dp3bt6J74C9TKbsJQZ1pzzA7Hsu0';
 const sb=supabase.createClient(SURL,SKEY);
 const today=new Date().toISOString().split('T')[0];
 const fmtCOP=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(Number(n)||0);
@@ -434,6 +435,13 @@ async function psels(){
 }
 function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
 
+async function crearAccesoVia(email,pass,cliId){
+  const {data,error}=await sb.rpc('create_client_user',{
+    user_email:email,user_password:pass,client_id:cliId
+  });
+  return {data,error};
+}
+
 async function crearAcceso(){
   const cliId=document.getElementById('acceso-cli-id').value;
   const email=document.getElementById('acceso-email').value.trim();
@@ -443,9 +451,7 @@ async function crearAcceso(){
   if(!email||!pass){alert('Email y contraseña requeridos');return;}
   if(pass.length<8){alert('Mínimo 8 caracteres');return;}
   btn.textContent='Creando...';btn.disabled=true;
-  const {data,error}=await sb.rpc('create_client_user',{
-    user_email:email,user_password:pass,client_id:cliId
-  });
+  const {data,error}=await crearAccesoVia(email,pass,cliId);
   if(error){
     result.style.display='block';
     result.style.background='#FCEBEB';
@@ -460,6 +466,7 @@ async function crearAcceso(){
   }
   btn.textContent='Crear acceso';btn.disabled=false;
 }
+
 async function renderDashboard(){
   const [{data:clients},{data:caja},{data:tareas}]=await Promise.all([sb.from('clients').select('*').order('name'),sb.from('caja_transactions').select('*').order('tx_date',{ascending:false}).limit(5),sb.from('tasks').select('*').eq('done',false)]);
   const allCaja=await sb.from('caja_transactions').select('type,amount');
@@ -502,8 +509,15 @@ async function renderClientes(){
   const exp=(clients||[]).filter(c=>c.status==='expiring').length;
   const mrr=(clients||[]).filter(c=>c.status!=='inactive').reduce((s,c)=>s+Number(c.monthly_fee),0);
   document.getElementById('cli-kpis').innerHTML=mc('Total',(clients||[]).length)+mc('Activos',act,'','#3B6D11')+mc('Por renovar',exp,'',exp>0?'#854F0B':'')+mc('MRR COP',fmtCOP(mrr));
-  document.getElementById('cli-list-wrap').innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn" onclick="openModal('m-cliente')">+ Agregar cliente</button></div>${(clients||[]).map(c=>`<div class="cli-card" onclick="abrirCliente('${c.id}')"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:#FFF0DD;display:flex;align-items:center;justify-content:center;font-weight:600;color:#FF8C00;font-size:14px">${c.name[0]}</div><div><div style="font-weight:500;font-size:13px">${c.name}</div><div style="font-size:11px;color:#888">${c.sector||'—'} · ${c.contact_name||'—'}</div></div></div><div style="display:flex;align-items:center;gap:10px"><div style="text-align:right"><div style="font-weight:500">${fmtCOP(c.monthly_fee)}</div><div style="font-size:10px;color:#888">${c.monthly_fee_usd?fmtUSD(c.monthly_fee_usd):''}</div></div>${bdg(pB[c.plan]||'bgy',pL[c.plan]||c.plan)}${bdg(eB[c.status]||'bgy',eL[c.status]||c.status)}<span style="color:#FF8C00">→</span></div></div></div>`).join('')||'<div class="empty">Sin clientes</div>'}`;
+  document.getElementById('cli-list-wrap').innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn" onclick="openModal('m-cliente')">+ Agregar cliente</button></div>${(clients||[]).map(c=>`<div class="cli-card" onclick="abrirCliente('${c.id}')"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:#FFF0DD;display:flex;align-items:center;justify-content:center;font-weight:600;color:#FF8C00;font-size:14px">${c.name[0]}</div><div><div style="font-weight:500;font-size:13px">${c.name}</div><div style="font-size:11px;color:#888">${c.sector||'—'} · ${c.contact_name||'—'}</div></div></div><div style="display:flex;align-items:center;gap:10px"><div style="text-align:right"><div style="font-weight:500">${fmtCOP(c.monthly_fee)}</div><div style="font-size:10px;color:#888">${c.monthly_fee_usd?fmtUSD(c.monthly_fee_usd):''}</div></div>${bdg(pB[c.plan]||'bgy',pL[c.plan]||c.plan)}${bdg(eB[c.status]||'bgy',eL[c.status]||c.status)}<button class="bi bd" style="font-size:14px" onclick="event.stopPropagation();delCliente('${c.id}')">✕</button></div></div></div>`).join('')||'<div class="empty">Sin clientes</div>'}`;
   document.getElementById('nb-cli').textContent=exp||'';
+}
+async function delCliente(id){
+  if(!confirm('¿Eliminar este cliente? Se borrarán también su acceso, tareas, contenido e informes.'))return;
+  const {data:c}=await sb.from('clients').select('user_id').eq('id',id).single();
+  await sb.from('clients').delete().eq('id',id);
+  toast('Cliente eliminado');
+  renderClientes();renderDashboard();psels();
 }
 async function abrirCliente(id){
   currentClienteId=id;nav('cliente-detalle');
@@ -535,6 +549,8 @@ async function editClienteActual(){
   document.getElementById('f-pago').value=c.next_payment_date||'';
   document.getElementById('f-estado').value=c.status;
   document.getElementById('f-notas').value=c.notes||'';
+  document.getElementById('f-acceso-email').value='';
+  document.getElementById('f-acceso-pass').value='';
   openModal('m-cliente');
 }
 async function renderDetTareas(tipo){
@@ -626,10 +642,23 @@ async function saveCliente(){
   const n=document.getElementById('f-nombre').value.trim(),v=document.getElementById('f-valor').value;
   if(!n||!v){alert('Nombre y valor COP requeridos');return;}
   const id=document.getElementById('cli-edit-id').value;
+  const accesoEmail=document.getElementById('f-acceso-email').value.trim();
+  const accesoPass=document.getElementById('f-acceso-pass').value;
+  if(accesoEmail&&accesoPass&&accesoPass.length<8){alert('La contraseña de acceso debe tener mínimo 8 caracteres');return;}
+  if(accesoEmail&&!accesoPass){alert('Si pones email de acceso, también pon la contraseña');return;}
   const obj={name:n,sector:document.getElementById('f-sector').value,plan:document.getElementById('f-plan').value,monthly_fee:parseInt(v),monthly_fee_usd:parseFloat(document.getElementById('f-valor-usd').value)||null,contact_name:document.getElementById('f-contacto').value,contact_phone:document.getElementById('f-tel').value,contact_email:document.getElementById('f-email-cli').value,next_payment_date:document.getElementById('f-pago').value||null,status:document.getElementById('f-estado').value,notes:document.getElementById('f-notas').value};
-  if(id){await sb.from('clients').update(obj).eq('id',id);}else{await sb.from('clients').insert(obj);}
+  let savedId=id;
+  if(id){await sb.from('clients').update(obj).eq('id',id);}else{const {data:inserted}=await sb.from('clients').insert(obj).select('id').single();savedId=inserted?.id;}
+  if(accesoEmail&&accesoPass&&savedId){
+    const {error}=await crearAccesoVia(accesoEmail,accesoPass,savedId);
+    if(error){toast('Cliente guardado, pero error al crear acceso: '+error.message,true);}
+    else{toast('Cliente y acceso creados ✓');}
+  }else{
+    toast('Cliente guardado ✓');
+  }
   closeModal('m-cliente');document.getElementById('cli-edit-id').value='';document.getElementById('m-cli-title').textContent='Agregar cliente';
-  toast('Cliente guardado ✓');renderClientes();renderDashboard();psels();
+  document.getElementById('f-acceso-email').value='';document.getElementById('f-acceso-pass').value='';
+  renderClientes();renderDashboard();psels();
 }
 async function saveCaja(){
   const m=parseInt(document.getElementById('c-monto').value),d=document.getElementById('c-desc').value.trim();
