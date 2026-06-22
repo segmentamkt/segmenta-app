@@ -258,6 +258,10 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
   <div class="fr"><div><span class="fl">Contacto</span><input id="f-contacto"></div><div><span class="fl">Teléfono</span><input id="f-tel"></div></div>
   <div class="fr"><div><span class="fl">Email contacto</span><input id="f-email-cli"></div><div><span class="fl">Próximo pago</span><input type="date" id="f-pago"></div></div>
   <span class="fl">Notas internas</span><textarea id="f-notas" rows="2"></textarea>
+  <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.08)">
+    <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;margin-bottom:8px">🔑 Acceso al portal (opcional)</div>
+    <div class="fr"><div><span class="fl">Email de acceso</span><input type="email" id="f-acceso-email" placeholder="cliente@empresa.com"></div><div><span class="fl">Contraseña</span><input type="password" id="f-acceso-pass" placeholder="Mínimo 8 caracteres"></div></div>
+  </div>
   <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end"><button class="btn-out" onclick="closeModal('m-cliente')">Cancelar</button><button class="btn" onclick="saveCliente()">Guardar</button></div>
 </div></div>
 <div class="modal-bg" id="m-acceso"><div class="modal">
