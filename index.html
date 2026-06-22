@@ -239,6 +239,7 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
         <table><thead><tr><th>Socio</th><th>Cargo</th><th>%</th><th>Monto (75% utilidad)</th></tr></thead><tbody id="soc-table"></tbody></table></div>
     </div>
   </div>
+  <div id="client-portal-view" style="display:none;flex:1;overflow-y:auto;background:#f0ede8"></div>
 </div>
 <div class="modal-bg" id="m-rapido"><div class="modal">
   <div class="mh"><h3>¿Qué quieres crear?</h3><button class="btn-out" onclick="closeModal('m-rapido')">✕</button></div>
@@ -401,14 +402,91 @@ async function doLogin(){
   showApp();
 }
 async function doLogout(){await sb.auth.signOut();location.reload();}
-function showApp(){
+let currentUserRole='admin';
+let currentUserClientId=null;
+
+async function checkRole(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return 'admin';
+  const userId=session.user.id;
+  const {data:profile}=await sb.from('profiles').select('role').eq('id',userId).maybeSingle();
+  if(profile){return profile.role;}
+  const {data:client}=await sb.from('clients').select('id').eq('user_id',userId).maybeSingle();
+  if(client){currentUserClientId=client.id;return 'client';}
+  return 'team';
+}
+
+async function showApp(){
+  currentUserRole=await checkRole();
+  if(currentUserRole==='client'){
+    showClientPortal();
+    return;
+  }
   document.getElementById('sb').style.display='flex';
   document.getElementById('main').style.display='flex';
+  if(currentUserRole==='team'){
+    document.querySelectorAll('.ni[data-page="finanzas"],.ni[data-page="socios"],.ni[data-page="caja"]').forEach(el=>el.style.display='none');
+  }
   document.querySelectorAll('.ni').forEach(ni=>ni.addEventListener('click',()=>nav(ni.dataset.page)));
   document.getElementById('c-fecha').value=today;
   document.getElementById('co-fecha').value=today;
   document.getElementById('p-inicio').value=today;
   psels();renderDashboard();
+}
+
+async function showClientPortal(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return;
+  const {data:client}=await sb.from('clients').select('id').eq('user_id',session.user.id).maybeSingle();
+  if(!client){toast('No se encontró tu perfil de cliente',true);return;}
+  currentUserClientId=client.id;
+  document.getElementById('main').style.display='flex';
+  document.getElementById('main').style.width='100%';
+  document.querySelector('.topbar').style.display='none';
+  document.getElementById('client-portal-view').style.display='block';
+  renderClientOwnPortal(client.id);
+}
+
+async function renderClientOwnPortal(cid){
+  const [{data:c},{data:tasks},{data:cont},{data:informes}]=await Promise.all([
+    sb.from('clients').select('*').eq('id',cid).single(),
+    sb.from('tasks').select('*').eq('client_id',cid).eq('task_type','client').order('created_at',{ascending:false}),
+    sb.from('content_items').select('*').eq('client_id',cid).order('scheduled_date'),
+    sb.from('weekly_reports').select('*').eq('client_id',cid).order('created_at',{ascending:false}).limit(3)
+  ]);
+  const lastInf=informes&&informes[0];
+  document.getElementById('client-portal-view').innerHTML=`
+    <div style="max-width:900px;margin:0 auto;padding:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:18px;font-weight:700;color:#FF8C00">⬡ Segmenta</div>
+        <button class="btn-out" onclick="doLogout()">Cerrar sesión</button>
+      </div>
+      <div class="portal-header">
+        <div style="font-size:18px;font-weight:600;margin-bottom:4px">${c?.name||'Cliente'}</div>
+        <div style="font-size:12px;color:#888">Plan ${pL[c?.plan]||''} · Portal de seguimiento</div>
+        ${lastInf?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:16px">
+          <div class="stat-box"><div style="font-size:10px;color:#888;margin-bottom:4px">Alcance</div><div style="font-size:18px;font-weight:600">${(lastInf.total_reach||0).toLocaleString('es-CO')}</div></div>
+          <div class="stat-box"><div style="font-size:10px;color:#888;margin-bottom:4px">Interacciones</div><div style="font-size:18px;font-weight:600">${(lastInf.total_engagements||0).toLocaleString('es-CO')}</div></div>
+          <div class="stat-box"><div style="font-size:10px;color:#888;margin-bottom:4px">Seguidores</div><div style="font-size:18px;font-weight:600;color:#FF8C00">+${lastInf.new_followers||0}</div></div>
+          <div class="stat-box"><div style="font-size:10px;color:#888;margin-bottom:4px">Engagement</div><div style="font-size:18px;font-weight:600">${lastInf.engagement_rate?lastInf.engagement_rate+'%':'—'}</div></div>
+        </div>`:''}
+      </div>
+      <div class="g2" style="margin-bottom:14px">
+        <div class="card" style="margin:0"><div class="ch"><span class="ct">✅ Mis tareas</span></div>
+          ${(tasks||[]).map(t=>`<div class="ci"><div class="chk ${t.done?'done':''}">${t.done?'✓':''}</div><div><div class="${t.done?'done-t':''}" style="font-size:12px">${t.title}</div>${t.due_date?`<div style="font-size:10px;color:#bbb">Vence ${fd(t.due_date)}</div>`:''}</div></div>`).join('')||'<div class="empty">Sin tareas pendientes 🎉</div>'}
+        </div>
+        <div class="card" style="margin:0"><div class="ch"><span class="ct">📅 Mi contenido</span></div>
+          ${(cont||[]).map(c=>`<div class="tx-row"><div><div style="font-weight:500;font-size:12px">${c.title}</div><div style="font-size:10px;color:#888">${fd(c.scheduled_date)} · ${c.format} · ${c.network}</div></div>${bdg(cB[c.status]||'bgy',cL[c.status]||c.status)}</div>`).join('')||'<div class="empty">Sin contenido</div>'}
+        </div>
+      </div>
+      ${(informes||[]).length>0?`<div class="card"><div class="ch"><span class="ct">📊 Mis informes</span></div>
+        ${informes.map(inf=>{const pct=inf.pieces_planned>0?Math.round(inf.pieces_published/inf.pieces_planned*100):0;return`<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:0.5px solid rgba(0,0,0,.06)">
+          <div style="font-weight:500;margin-bottom:8px">${inf.week_label||'Semana'}</div>
+          <div class="pb"><div class="pf" style="width:${pct}%;background:#FF8C00"></div></div>
+          ${inf.summary?`<p style="font-size:12px;color:#555;margin-top:8px">${inf.summary}</p>`:''}
+        </div>`;}).join('')}
+      </div>`:''}
+    </div>`;
 }
 window.addEventListener('load',async()=>{
   const {data:{session}}=await sb.auth.getSession();
