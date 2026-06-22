@@ -103,6 +103,29 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
 .empty{text-align:center;padding:32px;color:#bbb;font-size:12px}
 .acc-section{margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.08)}
 .acc-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;margin-bottom:8px}
+.menu-toggle{display:none}
+@media (max-width:768px){
+  body{overflow:auto}
+  .menu-toggle{display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#181816;border:none;border-radius:8px;color:#FF8C00;font-size:18px;cursor:pointer}
+  #sb{position:fixed;left:-260px;top:0;bottom:0;z-index:500;transition:left .25s;box-shadow:4px 0 20px rgba(0,0,0,.3);width:260px}
+  #sb.open{left:0}
+  #sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:499}
+  #sb-overlay.show{display:block}
+  #main{width:100%}
+  .topbar{padding:0 12px}
+  .ptitle{font-size:13px}
+  .content{padding:12px}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .mg{grid-template-columns:repeat(2,1fr)}
+  .modal{width:94%;padding:16px}
+  table{display:block;overflow-x:auto;white-space:nowrap}
+  .tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .cli-card{padding:12px}
+  .card{padding:14px}
+  .fr,.f3{grid-template-columns:1fr}
+  .portal-header{padding:18px}
+  #client-portal-view > div{padding:14px}
+}
 </style>
 </head>
 <body>
@@ -149,9 +172,13 @@ input:focus,select:focus,textarea:focus{border-color:#FF8C00}
     </div>
   </div>
 </div>
+<div id="sb-overlay" onclick="toggleSidebar()"></div>
 <div id="main" style="display:none">
   <div class="topbar">
-    <span class="ptitle" id="ptitle">Dashboard</span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <span class="ptitle" id="ptitle">Dashboard</span>
+    </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span style="font-size:10px;color:#999" id="tfecha"></span>
       <button class="btn btn-sm" onclick="openModal('m-rapido')">+ Nuevo</button>
@@ -557,6 +584,13 @@ function nav(id){
   const ni=document.querySelector(`.ni[data-page="${id}"]`);if(ni)ni.classList.add('on');
   document.getElementById('ptitle').textContent=T[id]||id;
   renders[id]&&renders[id]();
+  if(window.innerWidth<=768)toggleSidebar(false);
+}
+function toggleSidebar(force){
+  const sb=document.getElementById('sb'),ov=document.getElementById('sb-overlay');
+  const show=force!==undefined?force:!sb.classList.contains('open');
+  sb.classList.toggle('open',show);
+  ov.classList.toggle('show',show);
 }
 async function psels(){
   const {data:clients}=await sb.from('clients').select('id,name').neq('status','inactive').order('name');
