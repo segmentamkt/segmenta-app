@@ -676,10 +676,8 @@
     <div class=&quot;field&quot;><label>Contrasena</label><input id=&quot;li-pass&quot; type=&quot;password&quot; placeholder=&quot;&amp;bull;&amp;bull;&amp;bull;&amp;bull;&amp;bull;&amp;bull;&quot; autocomplete=&quot;current-password&quot; onkeydown=&quot;if(event.key===String.fromCharCode(69,110,116,101,114))doLogin()&quot;></div>
     <div class=&quot;login-err&quot; id=&quot;li-err&quot;></div>
     <button class=&quot;btn btn-primary&quot; style=&quot;width:100%;justify-content:center&quot; onclick=&quot;doLogin()&quot;>Ingresar</button>
-    <div class=&quot;demo&quot;><b>Cuentas de prueba</b> (clic para autocompletar)
+    <div class=&quot;demo&quot;><b>Acceso host</b> (clic para autocompletar)
       <div class=&quot;row&quot; onclick=&quot;fill('host@segmenta.co','segmenta')&quot;><span>Host / Admin</span><span>host@segmenta.co</span></div>
-      <div class=&quot;row&quot; onclick=&quot;fill('aura@cliente.co','demo')&quot;><span>Cliente &amp;middot; Boutique Aura</span><span>aura@cliente.co</span></div>
-      <div class=&quot;row&quot; onclick=&quot;fill('vitalis@cliente.co','demo')&quot;><span>Cliente &amp;middot; Clinica Vitalis</span><span>vitalis@cliente.co</span></div>
     </div>
   </div>
 </div>
@@ -703,31 +701,14 @@
 // ---------- SEED ----------
 var SEED = {
   users:[
-    {id:'u_host', email:'host@segmenta.co', pass:'segmenta', role:'host', name:'Equipo Segmenta', clientId:null},
-    {id:'u_aura', email:'aura@cliente.co', pass:'demo', role:'client', name:'Laura Mejia', clientId:'aura'},
-    {id:'u_vitalis', email:'vitalis@cliente.co', pass:'demo', role:'client', name:'Dr. Ramirez', clientId:'vitalis'}
+    {id:'u_host', email:'host@segmenta.co', pass:'segmenta', role:'host', name:'Equipo Segmenta', clientId:null}
   ],
   plans:[
     {id:'pl_growth', name:'Growth', price:'$1.500.000'},
     {id:'pl_perf', name:'Performance', price:'$2.200.000'},
     {id:'pl_scale', name:'Scale', price:'$3.800.000'}
   ],
-  clients:{
-    aura:{ name:'Boutique Aura', contact:'Laura Mejia', plan:'Growth', cost:'$1.500.000',
-      payment:{status:'g', next:'15 ago 2026', card:'****4291'},
-      dashboardUrl:'https://lookerstudio.google.com/',
-      metrics:{roas:'4.9x', conversions:'1.284', cpa:'$18.400', spend:'$6.200.000', reach:'847K'},
-      history:[{m:'May',v:52},{m:'Jun',v:61},{m:'Jul',v:58},{m:'Ago',v:74},{m:'Sep',v:88},{m:'Oct',v:100}],
-      analysis:[{date:'28 oct 2026', title:'Escalamiento recomendado', body:'ROAS sostenido en 4.9x por 3 semanas. Recomendamos +20% de presupuesto en el conjunto UGC-vertical.'}],
-      reports:[{name:'Reporte mensual - Octubre', date:'01 nov 2026'},{name:'Factura #0294', date:'01 oct 2026'}] },
-    vitalis:{ name:'Clinica Vitalis', contact:'Dr. Ramirez', plan:'Performance', cost:'$2.200.000',
-      payment:{status:'y', next:'05 ago 2026', card:'****7733'},
-      dashboardUrl:'https://lookerstudio.google.com/',
-      metrics:{roas:'3.6x', conversions:'287', cpa:'$41.000', spend:'$4.100.000', reach:'412K'},
-      history:[{m:'May',v:40},{m:'Jun',v:48},{m:'Jul',v:55},{m:'Ago',v:60},{m:'Sep',v:78},{m:'Oct',v:92}],
-      analysis:[{date:'26 oct 2026', title:'Show-rate en maximos', body:'El CRM con recordatorios automaticos subio el show-rate a 92%. Siguiente paso: reactivacion de pacientes inactivos.'}],
-      reports:[{name:'Reporte mensual - Octubre', date:'01 nov 2026'},{name:'Factura #0295', date:'01 oct 2026'}] }
-  }
+  clients:{}
 };
 
 var DB=null, KEY='segmenta_portal_db_v2';
@@ -761,7 +742,7 @@ function doLogin(){
 }
 function logout(){CURRENT=null;previewing=false;document.getElementById('app').classList.add('hidden');document.getElementById('login').classList.remove('hidden');document.getElementById('li-pass').value='';}
 function showClientView(){document.getElementById('clientView').classList.remove('hidden');document.getElementById('hostView').classList.add('hidden');}
-function togglePreview(){previewing=!previewing;document.getElementById('previewBtn').textContent=previewing?'Volver al panel':'Vista previa cliente';if(previewing){renderClient(selectedClient,true);showClientView();}else{showHost();}}
+function togglePreview(){ if(!previewing &amp;&amp; (!selectedClient||!DB.clients[selectedClient])){toast('No hay clientes para previsualizar');return;} previewing=!previewing;document.getElementById('previewBtn').textContent=previewing?'Volver al panel':'Vista previa cliente';if(previewing){renderClient(selectedClient,true);showClientView();}else{showHost();}}
 
 // ---------- CLIENT ----------
 function bars(hist){var max=Math.max.apply(null,hist.map(function(h){return h.v;}))||100;
@@ -808,7 +789,9 @@ function renderHostShell(){
 function setHostTab(t){hostTab=t;renderHostShell();}
 function renderHostTab(){
   var el=document.getElementById('hostContent');
-  if(hostTab==='clientes'){el.innerHTML='<div class=&quot;host-grid&quot;><div class=&quot;client-list&quot; id=&quot;clientList&quot;></div><div class=&quot;host-main&quot; id=&quot;hostMain&quot;></div></div>';
+  if(hostTab==='clientes'){
+    if(Object.keys(DB.clients).length===0){el.innerHTML='<div class=&quot;card&quot; style=&quot;text-align:center;padding:48px&quot;><h3>Aun no tienes clientes</h3><div class=&quot;chint&quot; style=&quot;margin-bottom:18px&quot;>Crea tu primer cliente para empezar a cargar metricas y analisis.</div><button class=&quot;btn btn-primary&quot; onclick=&quot;addClientPrompt()&quot;>+ Nuevo cliente</button></div>';return;}
+    el.innerHTML='<div class=&quot;host-grid&quot;><div class=&quot;client-list&quot; id=&quot;clientList&quot;></div><div class=&quot;host-main&quot; id=&quot;hostMain&quot;></div></div>';
     renderClientList(); if(!selectedClient||!DB.clients[selectedClient])selectedClient=Object.keys(DB.clients)[0]; renderHostMain();}
   else if(hostTab==='usuarios'){el.innerHTML=renderUsers();}
   else{el.innerHTML=renderPlans();}
@@ -818,13 +801,14 @@ function renderHostTab(){
 function renderClientList(){
   var el=document.getElementById('clientList'); if(!el)return;
   var semc={g:'var(--green)',y:'var(--amber)',r:'var(--red)'};
-  el.innerHTML='<div class=&quot;cl-h&quot;>Clientes ('+Object.keys(DB.clients).length+')</div>'+
+  el.innerHTML='<div class=&quot;cl-h&quot; style=&quot;display:flex;justify-content:space-between;align-items:center&quot;>Clientes ('+Object.keys(DB.clients).length+') <button class=&quot;link-act&quot; onclick=&quot;addClientPrompt()&quot;>+ Nuevo</button></div>'+
     Object.keys(DB.clients).map(function(id){var c=DB.clients[id];
       return '<div class=&quot;cl-item'+(id===selectedClient?' active':'')+'&quot; onclick=&quot;selectClient(\''+id+'\')&quot;>'+
         '<div><div class=&quot;cl-name&quot;>'+esc(c.name)+'</div><div class=&quot;cl-sub&quot;>'+esc(c.plan)+'</div></div>'+
         '<span class=&quot;cl-dot&quot; style=&quot;background:'+semc[c.payment.status]+'&quot;></span></div>';}).join('');
 }
 function selectClient(id){selectedClient=id;renderClientList();renderHostMain();}
+function addClientPrompt(){var name=prompt('Nombre del nuevo cliente:','');if(name===null)return;name=name.trim();if(!name){toast('Nombre vacio');return;}var id=newClientRecord(name);selectedClient=id;saveDB();renderHostShell();toast('Cliente creado');}
 function inp(id,label,val){return '<div class=&quot;field&quot;><label>'+label+'</label><input id=&quot;'+id+'&quot; value=&quot;'+esc(val)+'&quot;></div>';}
 function sel(id,label,opts,cur){return '<div class=&quot;field&quot;><label>'+label+'</label><select id=&quot;'+id+'&quot;>'+opts.map(function(o){return '<option value=&quot;'+esc(o[0])+'&quot;'+(o[0]===cur?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></div>';}
 function planOpts(cur){
@@ -834,6 +818,7 @@ function planOpts(cur){
 }
 function renderHostMain(){
   var el=document.getElementById('hostMain'); if(!el)return;
+  if(!selectedClient||!DB.clients[selectedClient]){el.innerHTML='';return;}
   var id=selectedClient, c=DB.clients[id], m=c.metrics, pay=c.payment;
   el.innerHTML=
   '<div class=&quot;card&quot;><h3>'+esc(c.name)+'</h3><div class=&quot;chint&quot;>Contacto: '+esc(c.contact)+'</div>'+
