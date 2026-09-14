@@ -776,14 +776,14 @@ function renderClient(id, ro){
 // ---------- HOST SHELL + TABS ----------
 function showHost(){document.getElementById('hostView').classList.remove('hidden');document.getElementById('clientView').classList.add('hidden');renderHostShell();}
 function renderHostShell(){
-  var tabs=['clientes','usuarios','planes'], labels={clientes:'Clientes',usuarios:'Usuarios',planes:'Planes'};
+  var tabs=['crm','clientes','usuarios','planes'], labels={crm:'CRM',clientes:'Clientes',usuarios:'Usuarios',planes:'Planes'};
   document.getElementById('hostView').innerHTML=
     '<div class=&quot;page-head&quot;><h1>Panel de gestion</h1><p>Administra clientes, usuarios y planes.</p></div>'+
     '<div class=&quot;htabs&quot;>'+tabs.map(function(t){return '<button class=&quot;htab'+(t===hostTab?' active':'')+'&quot; onclick=&quot;setHostTab(\''+t+'\')&quot;>'+labels[t]+'</button>';}).join('')+'</div>'+
     '<div id=&quot;hostContent&quot;></div>';
   renderHostTab();
 }
-function setHostTab(t){hostTab=t;renderHostShell();}
+function setHostTab(t){if(t==='crm'){window.parent.location.href='crm.html';return;}hostTab=t;renderHostShell();}
 function renderHostTab(){
   var el=document.getElementById('hostContent');
   if(hostTab==='clientes'){
