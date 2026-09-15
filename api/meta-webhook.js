@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
 const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'segmenta_meta_verify_2026';
+const WEBHOOK_VERSION = 'messenger-debug-2026-09-15-1';
 
 function verifySignature(req) {
   const appSecret = process.env.META_APP_SECRET;
@@ -18,6 +19,10 @@ function verifySignature(req) {
 
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
+    if (req.query.health === '1') {
+      return res.status(200).json({ ok: true, version: WEBHOOK_VERSION });
+    }
+
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -79,6 +84,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
+      version: WEBHOOK_VERSION,
       received_leads: leadEvents.length,
       received_messages: messengerEvents.length
     });
