@@ -72,6 +72,9 @@ module.exports = async function handler(req, res) {
 
     if (messengerEvents.length) {
       console.log('META_MESSENGER_EVENTS', JSON.stringify(messengerEvents));
+      for (const event of messengerEvents) {
+        console.log('META_MESSENGER_TEXT', event.sender_id || '-', event.text || '[sin texto]');
+      }
     }
 
     return res.status(200).json({
