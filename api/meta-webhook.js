@@ -36,6 +36,7 @@ module.exports = async function handler(req, res) {
 
     const payload = req.body || {};
     const leadEvents = [];
+    const messengerEvents = [];
 
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
@@ -47,10 +48,37 @@ module.exports = async function handler(req, res) {
           });
         }
       }
+
+      for (const event of entry.messaging || []) {
+        const message = event.message || {};
+        messengerEvents.push({
+          page_id: entry.id || event.recipient?.id || null,
+          sender_id: event.sender?.id || null,
+          recipient_id: event.recipient?.id || null,
+          timestamp: event.timestamp || entry.time || null,
+          mid: message.mid || null,
+          text: message.text || null,
+          attachments: message.attachments || [],
+          is_echo: Boolean(message.is_echo),
+          quick_reply: message.quick_reply || null,
+          reply_to: message.reply_to || null
+        });
+      }
     }
 
-    console.log('META_LEADGEN_EVENTS', JSON.stringify(leadEvents));
-    return res.status(200).json({ ok: true, received: leadEvents.length });
+    if (leadEvents.length) {
+      console.log('META_LEADGEN_EVENTS', JSON.stringify(leadEvents));
+    }
+
+    if (messengerEvents.length) {
+      console.log('META_MESSENGER_EVENTS', JSON.stringify(messengerEvents));
+    }
+
+    return res.status(200).json({
+      ok: true,
+      received_leads: leadEvents.length,
+      received_messages: messengerEvents.length
+    });
   }
 
   res.setHeader('Allow', 'GET, POST');
