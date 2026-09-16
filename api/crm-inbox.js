@@ -108,10 +108,10 @@ module.exports = async function handler(req, res) {
 
     const conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,created_at,contact:crm_contacts(id,external_user_id,display_name,phone,email),channel:crm_channels(id,channel_type,external_account_name)&order=last_message_at.desc.nullslast&limit=100`);
     const ids = (conversations || []).map(x => x.id);
-    let latestByConversation = {};
+    const latestByConversation = {};
 
     if (ids.length) {
-      const inFilter = ids.map(id => `\"${id}\"`).join(',');
+      const inFilter = ids.join(',');
       const messages = await sb(`crm_messages?organization_id=eq.${organization.id}&conversation_id=in.(${encodeURIComponent(inFilter)})&select=conversation_id,direction,message_type,text,attachments,sent_at&order=sent_at.desc&limit=500`);
       for (const message of messages || []) {
         if (!latestByConversation[message.conversation_id]) latestByConversation[message.conversation_id] = message;
