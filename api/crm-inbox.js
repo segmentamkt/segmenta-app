@@ -62,10 +62,10 @@ function channelName(type) {
   return type || 'Canal';
 }
 
-async function fetchMetaProfile(psid) {
-  if (!META_PAGE_ACCESS_TOKEN || !psid) return null;
-  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(psid)}`);
-  url.searchParams.set('fields', 'id,first_name,last_name,profile_pic');
+async function fetchGraphProfile(id, fields) {
+  if (!META_PAGE_ACCESS_TOKEN || !id) return null;
+  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(id)}`);
+  url.searchParams.set('fields', fields);
   url.searchParams.set('access_token', META_PAGE_ACCESS_TOKEN);
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
   const text = await response.text();
@@ -102,12 +102,15 @@ async function persistMetaProfileSync(contact, sync, extra = {}) {
 }
 
 async function enrichContactFromMeta(contact, channel) {
-  if (!contact || contact.display_name || channel?.channel_type !== 'facebook_messenger') return contact;
+  if (!contact || contact.display_name) return contact;
+  const type = channel?.channel_type;
+  if (!['facebook_messenger', 'instagram'].includes(type)) return contact;
 
   const attemptedAt = new Date().toISOString();
   if (!META_PAGE_ACCESS_TOKEN) {
     return persistMetaProfileSync(contact, {
       ok: false,
+      platform: type,
       code: 'TOKEN_NOT_CONFIGURED',
       message: 'META_PAGE_ACCESS_TOKEN no está disponible en este deployment de Production.',
       token_configured: false,
@@ -116,21 +119,37 @@ async function enrichContactFromMeta(contact, channel) {
   }
 
   try {
-    const profile = await fetchMetaProfile(contact.external_user_id);
+    const fields = type === 'instagram'
+      ? 'id,name,username,profile_pic'
+      : 'id,first_name,last_name,profile_pic';
+    const profile = await fetchGraphProfile(contact.external_user_id, fields);
+
     if (!profile) {
       return persistMetaProfileSync(contact, {
         ok: false,
+        platform: type,
         code: 'NO_PROFILE_RESPONSE',
-        message: 'Meta no devolvió un perfil para este PSID.',
+        message: 'Meta no devolvió un perfil para este contacto.',
         token_configured: true,
         attempted_at: attemptedAt
       });
     }
 
-    const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+    const displayName = type === 'instagram'
+      ? String(profile.name || profile.username || '').trim()
+      : [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+
     const metadata = {
       ...(contact.metadata || {}),
-      meta_profile: {
+      meta_profile: type === 'instagram' ? {
+        platform: 'instagram',
+        id: profile.id || contact.external_user_id,
+        name: profile.name || null,
+        username: profile.username || null,
+        profile_pic: profile.profile_pic || null,
+        synced_at: attemptedAt
+      } : {
+        platform: 'facebook_messenger',
         id: profile.id || contact.external_user_id,
         first_name: profile.first_name || null,
         last_name: profile.last_name || null,
@@ -139,8 +158,9 @@ async function enrichContactFromMeta(contact, channel) {
       },
       meta_profile_sync: {
         ok: Boolean(displayName),
+        platform: type,
         code: displayName ? 'OK' : 'PROFILE_WITHOUT_NAME',
-        message: displayName ? null : 'Meta respondió, pero no incluyó first_name/last_name.',
+        message: displayName ? null : 'Meta respondió, pero no incluyó un nombre o usuario.',
         token_configured: true,
         attempted_at: attemptedAt
       }
@@ -153,9 +173,10 @@ async function enrichContactFromMeta(contact, channel) {
     });
     return updated?.[0] || { ...contact, display_name: displayName || null, metadata };
   } catch (error) {
-    console.warn('CRM_META_PROFILE_ERROR', contact.external_user_id || '-', error.message);
+    console.warn('CRM_META_PROFILE_ERROR', type || '-', contact.external_user_id || '-', error.message);
     return persistMetaProfileSync(contact, {
       ok: false,
+      platform: type,
       code: error.metaCode ?? 'META_REQUEST_ERROR',
       subcode: error.metaSubcode ?? null,
       type: error.metaType ?? null,
