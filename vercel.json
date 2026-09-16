@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/crm", "destination": "/crm-v3.html" }
+    {
+      "source": "/crm",
+      "destination": "/crm-v3.html"
+    }
   ]
 }
