@@ -71,15 +71,62 @@ async function fetchMetaProfile(psid) {
   const text = await response.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
-  if (!response.ok || data?.error) throw new Error(data?.error?.message || `Meta profile lookup failed (${response.status})`);
+  if (!response.ok || data?.error) {
+    const error = new Error(data?.error?.message || `Meta profile lookup failed (${response.status})`);
+    error.metaCode = data?.error?.code ?? null;
+    error.metaSubcode = data?.error?.error_subcode ?? null;
+    error.metaType = data?.error?.type ?? null;
+    error.httpStatus = response.status;
+    throw error;
+  }
   return data;
 }
 
+async function persistMetaProfileSync(contact, sync, extra = {}) {
+  const metadata = {
+    ...(contact.metadata || {}),
+    ...extra,
+    meta_profile_sync: sync
+  };
+  try {
+    const updated = await sb(`crm_contacts?id=eq.${encodeURIComponent(contact.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ metadata, updated_at: new Date().toISOString() })
+    });
+    return updated?.[0] || { ...contact, metadata };
+  } catch (error) {
+    console.warn('CRM_META_PROFILE_SYNC_STORE_ERROR', contact.external_user_id || '-', error.message);
+    return { ...contact, metadata };
+  }
+}
+
 async function enrichContactFromMeta(contact, channel) {
-  if (!contact || contact.display_name || channel?.channel_type !== 'facebook_messenger' || !META_PAGE_ACCESS_TOKEN) return contact;
+  if (!contact || contact.display_name || channel?.channel_type !== 'facebook_messenger') return contact;
+
+  const attemptedAt = new Date().toISOString();
+  if (!META_PAGE_ACCESS_TOKEN) {
+    return persistMetaProfileSync(contact, {
+      ok: false,
+      code: 'TOKEN_NOT_CONFIGURED',
+      message: 'META_PAGE_ACCESS_TOKEN no está disponible en este deployment de Production.',
+      token_configured: false,
+      attempted_at: attemptedAt
+    });
+  }
+
   try {
     const profile = await fetchMetaProfile(contact.external_user_id);
-    if (!profile) return contact;
+    if (!profile) {
+      return persistMetaProfileSync(contact, {
+        ok: false,
+        code: 'NO_PROFILE_RESPONSE',
+        message: 'Meta no devolvió un perfil para este PSID.',
+        token_configured: true,
+        attempted_at: attemptedAt
+      });
+    }
+
     const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
     const metadata = {
       ...(contact.metadata || {}),
@@ -88,18 +135,35 @@ async function enrichContactFromMeta(contact, channel) {
         first_name: profile.first_name || null,
         last_name: profile.last_name || null,
         profile_pic: profile.profile_pic || null,
-        synced_at: new Date().toISOString()
+        synced_at: attemptedAt
+      },
+      meta_profile_sync: {
+        ok: Boolean(displayName),
+        code: displayName ? 'OK' : 'PROFILE_WITHOUT_NAME',
+        message: displayName ? null : 'Meta respondió, pero no incluyó first_name/last_name.',
+        token_configured: true,
+        attempted_at: attemptedAt
       }
     };
+
     const updated = await sb(`crm_contacts?id=eq.${encodeURIComponent(contact.id)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ display_name: displayName || null, metadata, updated_at: new Date().toISOString() })
+      body: JSON.stringify({ display_name: displayName || null, metadata, updated_at: attemptedAt })
     });
     return updated?.[0] || { ...contact, display_name: displayName || null, metadata };
   } catch (error) {
     console.warn('CRM_META_PROFILE_ERROR', contact.external_user_id || '-', error.message);
-    return contact;
+    return persistMetaProfileSync(contact, {
+      ok: false,
+      code: error.metaCode ?? 'META_REQUEST_ERROR',
+      subcode: error.metaSubcode ?? null,
+      type: error.metaType ?? null,
+      http_status: error.httpStatus ?? null,
+      message: String(error.message || 'Meta profile lookup failed').slice(0, 500),
+      token_configured: true,
+      attempted_at: attemptedAt
+    });
   }
 }
 
