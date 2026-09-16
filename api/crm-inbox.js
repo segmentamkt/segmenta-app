@@ -71,15 +71,12 @@ async function fetchMetaProfile(psid) {
   const text = await response.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
-  if (!response.ok || data?.error) {
-    throw new Error(data?.error?.message || `Meta profile lookup failed (${response.status})`);
-  }
+  if (!response.ok || data?.error) throw new Error(data?.error?.message || `Meta profile lookup failed (${response.status})`);
   return data;
 }
 
 async function enrichContactFromMeta(contact, channel) {
   if (!contact || contact.display_name || channel?.channel_type !== 'facebook_messenger' || !META_PAGE_ACCESS_TOKEN) return contact;
-
   try {
     const profile = await fetchMetaProfile(contact.external_user_id);
     if (!profile) return contact;
@@ -94,18 +91,12 @@ async function enrichContactFromMeta(contact, channel) {
         synced_at: new Date().toISOString()
       }
     };
-
     const updated = await sb(`crm_contacts?id=eq.${encodeURIComponent(contact.id)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({
-        display_name: displayName || contact.display_name || null,
-        metadata,
-        updated_at: new Date().toISOString()
-      })
+      body: JSON.stringify({ display_name: displayName || null, metadata, updated_at: new Date().toISOString() })
     });
-
-    return updated?.[0] || { ...contact, display_name: displayName || contact.display_name || null, metadata };
+    return updated?.[0] || { ...contact, display_name: displayName || null, metadata };
   } catch (error) {
     console.warn('CRM_META_PROFILE_ERROR', contact.external_user_id || '-', error.message);
     return contact;
@@ -118,18 +109,41 @@ async function enrichConversation(conversation) {
   return { ...conversation, contact };
 }
 
+async function getScopedConversation(conversationId, organizationId) {
+  const rows = await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organizationId}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id)&limit=1`);
+  return rows?.[0] || null;
+}
+
+function cleanText(value, max = 500) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function safeMetadataPatch(input) {
+  const allowed = ['business', 'city', 'source', 'interest', 'lead_status', 'responsible', 'notes'];
+  const out = {};
+  for (const key of allowed) {
+    if (Object.prototype.hasOwnProperty.call(input || {}, key)) out[key] = cleanText(input[key], key === 'notes' ? 4000 : 500);
+  }
+  return out;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-
-  if (!verifySession(req)) {
-    return res.status(401).json({ ok: false, error: 'CRM session required' });
-  }
+  if (!verifySession(req)) return res.status(401).json({ ok: false, error: 'CRM session required' });
 
   try {
+    const orgSlug = String(req.query?.org || req.body?.org || 'segmenta').trim().toLowerCase();
+    const organization = await getOrganization(orgSlug);
+    if (!organization) return res.status(404).json({ ok: false, error: 'Organization not found' });
+
     if (req.method === 'POST') {
       const conversationId = String(req.body?.conversation_id || '').trim();
       if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
-      await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}`, {
+      const conversation = await getScopedConversation(conversationId, organization.id);
+      if (!conversation) return res.status(404).json({ ok: false, error: 'Conversation not found' });
+      await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({ unread_count: 0, updated_at: new Date().toISOString() })
@@ -137,54 +151,86 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    if (req.method === 'PATCH') {
+      const conversationId = String(req.body?.conversation_id || '').trim();
+      if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
+      const conversation = await getScopedConversation(conversationId, organization.id);
+      if (!conversation?.contact?.id) return res.status(404).json({ ok: false, error: 'Contact not found' });
+
+      const metadata = {
+        ...(conversation.contact.metadata || {}),
+        ...safeMetadataPatch(req.body?.metadata || {})
+      };
+      const patch = {
+        display_name: cleanText(req.body?.display_name, 300),
+        phone: cleanText(req.body?.phone, 100),
+        email: cleanText(req.body?.email, 320),
+        metadata,
+        updated_at: new Date().toISOString()
+      };
+      const updated = await sb(`crm_contacts?id=eq.${conversation.contact.id}&organization_id=eq.${organization.id}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(patch)
+      });
+      return res.status(200).json({ ok: true, contact: updated?.[0] || { ...conversation.contact, ...patch } });
+    }
+
+    if (req.method === 'DELETE') {
+      const conversationId = String(req.query?.conversation_id || '').trim();
+      if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
+      const conversation = await getScopedConversation(conversationId, organization.id);
+      if (!conversation) return res.status(404).json({ ok: false, error: 'Conversation not found' });
+
+      const deleteContact = String(req.query?.delete_contact || '1') !== '0';
+      if (deleteContact && conversation.contact?.id) {
+        await sb(`crm_contacts?id=eq.${conversation.contact.id}&organization_id=eq.${organization.id}`, {
+          method: 'DELETE',
+          headers: { Prefer: 'return=minimal' }
+        });
+      } else {
+        await sb(`crm_conversations?id=eq.${conversation.id}&organization_id=eq.${organization.id}`, {
+          method: 'DELETE',
+          headers: { Prefer: 'return=minimal' }
+        });
+      }
+      return res.status(200).json({ ok: true, deleted_contact: deleteContact });
+    }
+
     if (req.method !== 'GET') {
-      res.setHeader('Allow', 'GET, POST');
+      res.setHeader('Allow', 'GET, POST, PATCH, DELETE');
       return res.status(405).json({ ok: false, error: 'Method not allowed' });
     }
 
-    const orgSlug = String(req.query.org || 'segmenta').trim().toLowerCase();
-    const organization = await getOrganization(orgSlug);
-    if (!organization) return res.status(404).json({ ok: false, error: 'Organization not found' });
-
-    const conversationId = String(req.query.conversation_id || '').trim();
+    const conversationId = String(req.query?.conversation_id || '').trim();
     if (conversationId) {
-      const convRows = await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata),channel:crm_channels(id,channel_type,external_account_name)&limit=1`);
-      let conversation = convRows?.[0];
+      let conversation = await getScopedConversation(conversationId, organization.id);
       if (!conversation) return res.status(404).json({ ok: false, error: 'Conversation not found' });
       conversation = await enrichConversation(conversation);
-
       const messages = await sb(`crm_messages?conversation_id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}&select=id,direction,message_type,text,attachments,sent_at,created_at,external_message_id&order=sent_at.asc&limit=300`);
       return res.status(200).json({
         ok: true,
         organization,
         meta_profile_configured: Boolean(META_PAGE_ACCESS_TOKEN),
-        conversation: {
-          ...conversation,
-          channel_label: channelName(conversation.channel?.channel_type)
-        },
+        conversation: { ...conversation, channel_label: channelName(conversation.channel?.channel_type) },
         messages: messages || []
       });
     }
 
-    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,created_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata),channel:crm_channels(id,channel_type,external_account_name)&order=last_message_at.desc.nullslast&limit=100`);
+    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id)&order=last_message_at.desc.nullslast&limit=100`);
     conversations = await Promise.all((conversations || []).map(enrichConversation));
     const ids = conversations.map(x => x.id);
     const latestByConversation = {};
-
     if (ids.length) {
       const inFilter = ids.join(',');
       const messages = await sb(`crm_messages?organization_id=eq.${organization.id}&conversation_id=in.(${encodeURIComponent(inFilter)})&select=conversation_id,direction,message_type,text,attachments,sent_at&order=sent_at.desc&limit=500`);
-      for (const message of messages || []) {
-        if (!latestByConversation[message.conversation_id]) latestByConversation[message.conversation_id] = message;
-      }
+      for (const message of messages || []) if (!latestByConversation[message.conversation_id]) latestByConversation[message.conversation_id] = message;
     }
-
     const data = conversations.map(conversation => ({
       ...conversation,
       channel_label: channelName(conversation.channel?.channel_type),
       latest_message: latestByConversation[conversation.id] || null
     }));
-
     return res.status(200).json({
       ok: true,
       organization,
