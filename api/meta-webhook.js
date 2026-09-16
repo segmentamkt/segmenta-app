@@ -1,7 +1,9 @@
 const crypto = require('crypto');
 
 const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'segmenta_meta_verify_2026';
-const WEBHOOK_VERSION = 'messenger-debug-2026-09-15-1';
+const WEBHOOK_VERSION = 'messenger-storage-2026-09-16-1';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 function verifySignature(req) {
   const appSecret = process.env.META_APP_SECRET;
@@ -17,10 +19,50 @@ function verifySignature(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+async function persistMessengerEvent(event) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    return { ok: false, skipped: 'SUPABASE_SERVICE_ROLE_KEY not configured' };
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/crm_ingest_messenger_message`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      p_page_id: event.page_id,
+      p_sender_id: event.sender_id,
+      p_recipient_id: event.recipient_id,
+      p_timestamp: event.timestamp,
+      p_mid: event.mid,
+      p_text: event.text,
+      p_attachments: event.attachments || [],
+      p_raw_payload: event.raw_event || {},
+      p_is_echo: Boolean(event.is_echo)
+    })
+  });
+
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+
+  if (!response.ok) {
+    throw new Error(`Supabase ${response.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+  }
+
+  return data || { ok: true };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     if (req.query.health === '1') {
-      return res.status(200).json({ ok: true, version: WEBHOOK_VERSION });
+      return res.status(200).json({
+        ok: true,
+        version: WEBHOOK_VERSION,
+        messenger_storage_configured: Boolean(SUPABASE_SERVICE_ROLE_KEY)
+      });
     }
 
     const mode = req.query['hub.mode'];
@@ -66,7 +108,8 @@ module.exports = async function handler(req, res) {
           attachments: message.attachments || [],
           is_echo: Boolean(message.is_echo),
           quick_reply: message.quick_reply || null,
-          reply_to: message.reply_to || null
+          reply_to: message.reply_to || null,
+          raw_event: event
         });
       }
     }
@@ -75,10 +118,19 @@ module.exports = async function handler(req, res) {
       console.log('META_LEADGEN_EVENTS', JSON.stringify(leadEvents));
     }
 
+    let storedMessages = 0;
     if (messengerEvents.length) {
-      console.log('META_MESSENGER_EVENTS', JSON.stringify(messengerEvents));
+      console.log('META_MESSENGER_EVENTS', JSON.stringify(messengerEvents.map(({ raw_event, ...event }) => event)));
+
       for (const event of messengerEvents) {
         console.log('META_MESSENGER_TEXT', event.sender_id || '-', event.text || '[sin texto]');
+        try {
+          const stored = await persistMessengerEvent(event);
+          if (stored?.ok) storedMessages += stored.duplicate ? 0 : 1;
+          console.log('META_MESSENGER_STORED', JSON.stringify(stored));
+        } catch (error) {
+          console.error('META_MESSENGER_STORE_ERROR', error.message);
+        }
       }
     }
 
@@ -86,7 +138,9 @@ module.exports = async function handler(req, res) {
       ok: true,
       version: WEBHOOK_VERSION,
       received_leads: leadEvents.length,
-      received_messages: messengerEvents.length
+      received_messages: messengerEvents.length,
+      stored_messages: storedMessages,
+      messenger_storage_configured: Boolean(SUPABASE_SERVICE_ROLE_KEY)
     });
   }
 
