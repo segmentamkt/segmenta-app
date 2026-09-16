@@ -1,9 +1,10 @@
 const crypto = require('crypto');
 
 const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'segmenta_meta_verify_2026';
-const WEBHOOK_VERSION = 'messenger-storage-2026-09-16-2';
+const WEBHOOK_VERSION = 'messenger-storage-2026-09-16-3';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const META_PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN || '';
 
 function verifySignature(req) {
   const appSecret = process.env.META_APP_SECRET;
@@ -61,7 +62,8 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         version: WEBHOOK_VERSION,
-        messenger_storage_configured: Boolean(SUPABASE_SERVICE_ROLE_KEY)
+        messenger_storage_configured: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+        meta_page_token_configured: Boolean(META_PAGE_ACCESS_TOKEN)
       });
     }
 
@@ -140,7 +142,8 @@ module.exports = async function handler(req, res) {
       received_leads: leadEvents.length,
       received_messages: messengerEvents.length,
       stored_messages: storedMessages,
-      messenger_storage_configured: Boolean(SUPABASE_SERVICE_ROLE_KEY)
+      messenger_storage_configured: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+      meta_page_token_configured: Boolean(META_PAGE_ACCESS_TOKEN)
     });
   }
 
