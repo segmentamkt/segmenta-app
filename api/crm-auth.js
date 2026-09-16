@@ -4,7 +4,8 @@ const COOKIE_NAME = 'segmenta_crm_session';
 const SESSION_SECONDS = 60 * 60 * 12;
 const EXPECTED_EMAIL = 'host@segmenta.co';
 const PASSWORD_SALT = 'segmenta-crm-2026';
-const EXPECTED_PASSWORD_HASH = '743f13edcb172e3f1e7f313706ff953ce0365538a60c9154d1288cba2019b32f';
+// Hash of the existing CRM admin password. The plaintext password is never stored here.
+const EXPECTED_PASSWORD_HASH = 'f8633368f2a74090275ac51a1da38a7efc477c916804ac394665689b0f4fcbff';
 
 function getSigningKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -22,6 +23,10 @@ function safeEqualHex(a, b) {
   } catch (_) {
     return false;
   }
+}
+
+function passwordHash(password) {
+  return crypto.createHash('sha256').update(`${PASSWORD_SALT}:${password}`).digest('hex');
 }
 
 function readCookie(req, name) {
@@ -70,9 +75,9 @@ module.exports = async function handler(req, res) {
 
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
-  const passwordHash = crypto.scryptSync(password, PASSWORD_SALT, 32).toString('hex');
+  const hash = passwordHash(password);
 
-  if (email !== EXPECTED_EMAIL || !safeEqualHex(passwordHash, EXPECTED_PASSWORD_HASH)) {
+  if (email !== EXPECTED_EMAIL || !safeEqualHex(hash, EXPECTED_PASSWORD_HASH)) {
     return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
   }
 
