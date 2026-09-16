@@ -2,6 +2,8 @@ const crypto = require('crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const META_PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN || '';
+const META_GRAPH_VERSION = 'v26.0';
 const COOKIE_NAME = 'segmenta_crm_session';
 const EXPECTED_EMAIL = 'host@segmenta.co';
 
@@ -60,6 +62,62 @@ function channelName(type) {
   return type || 'Canal';
 }
 
+async function fetchMetaProfile(psid) {
+  if (!META_PAGE_ACCESS_TOKEN || !psid) return null;
+  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(psid)}`);
+  url.searchParams.set('fields', 'id,first_name,last_name,profile_pic');
+  url.searchParams.set('access_token', META_PAGE_ACCESS_TOKEN);
+  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+  if (!response.ok || data?.error) {
+    throw new Error(data?.error?.message || `Meta profile lookup failed (${response.status})`);
+  }
+  return data;
+}
+
+async function enrichContactFromMeta(contact, channel) {
+  if (!contact || contact.display_name || channel?.channel_type !== 'facebook_messenger' || !META_PAGE_ACCESS_TOKEN) return contact;
+
+  try {
+    const profile = await fetchMetaProfile(contact.external_user_id);
+    if (!profile) return contact;
+    const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+    const metadata = {
+      ...(contact.metadata || {}),
+      meta_profile: {
+        id: profile.id || contact.external_user_id,
+        first_name: profile.first_name || null,
+        last_name: profile.last_name || null,
+        profile_pic: profile.profile_pic || null,
+        synced_at: new Date().toISOString()
+      }
+    };
+
+    const updated = await sb(`crm_contacts?id=eq.${encodeURIComponent(contact.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        display_name: displayName || contact.display_name || null,
+        metadata,
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    return updated?.[0] || { ...contact, display_name: displayName || contact.display_name || null, metadata };
+  } catch (error) {
+    console.warn('CRM_META_PROFILE_ERROR', contact.external_user_id || '-', error.message);
+    return contact;
+  }
+}
+
+async function enrichConversation(conversation) {
+  if (!conversation?.contact) return conversation;
+  const contact = await enrichContactFromMeta(conversation.contact, conversation.channel);
+  return { ...conversation, contact };
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -90,14 +148,16 @@ module.exports = async function handler(req, res) {
 
     const conversationId = String(req.query.conversation_id || '').trim();
     if (conversationId) {
-      const convRows = await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,contact:crm_contacts(id,external_user_id,display_name,phone,email),channel:crm_channels(id,channel_type,external_account_name)&limit=1`);
-      const conversation = convRows?.[0];
+      const convRows = await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata),channel:crm_channels(id,channel_type,external_account_name)&limit=1`);
+      let conversation = convRows?.[0];
       if (!conversation) return res.status(404).json({ ok: false, error: 'Conversation not found' });
+      conversation = await enrichConversation(conversation);
 
       const messages = await sb(`crm_messages?conversation_id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}&select=id,direction,message_type,text,attachments,sent_at,created_at,external_message_id&order=sent_at.asc&limit=300`);
       return res.status(200).json({
         ok: true,
         organization,
+        meta_profile_configured: Boolean(META_PAGE_ACCESS_TOKEN),
         conversation: {
           ...conversation,
           channel_label: channelName(conversation.channel?.channel_type)
@@ -106,8 +166,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,created_at,contact:crm_contacts(id,external_user_id,display_name,phone,email),channel:crm_channels(id,channel_type,external_account_name)&order=last_message_at.desc.nullslast&limit=100`);
-    const ids = (conversations || []).map(x => x.id);
+    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,status,unread_count,last_message_at,created_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata),channel:crm_channels(id,channel_type,external_account_name)&order=last_message_at.desc.nullslast&limit=100`);
+    conversations = await Promise.all((conversations || []).map(enrichConversation));
+    const ids = conversations.map(x => x.id);
     const latestByConversation = {};
 
     if (ids.length) {
@@ -118,7 +179,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const data = (conversations || []).map(conversation => ({
+    const data = conversations.map(conversation => ({
       ...conversation,
       channel_label: channelName(conversation.channel?.channel_type),
       latest_message: latestByConversation[conversation.id] || null
@@ -127,6 +188,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       organization,
+      meta_profile_configured: Boolean(META_PAGE_ACCESS_TOKEN),
       conversations: data,
       unread_total: data.reduce((sum, x) => sum + Number(x.unread_count || 0), 0)
     });
