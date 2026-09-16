@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'segmenta_meta_verify_2026';
-const WEBHOOK_VERSION = 'messenger-storage-2026-09-16-1';
+const WEBHOOK_VERSION = 'messenger-storage-2026-09-16-2';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
