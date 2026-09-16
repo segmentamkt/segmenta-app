@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const META_PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN || '';
+const META_INSTAGRAM_ACCESS_TOKEN = process.env.META_INSTAGRAM_ACCESS_TOKEN || '';
 const META_GRAPH_VERSION = 'v26.0';
 const COOKIE_NAME = 'segmenta_crm_session';
 const EXPECTED_EMAIL = 'host@segmenta.co';
@@ -62,11 +63,15 @@ function channelName(type) {
   return type || 'Canal';
 }
 
-async function fetchGraphProfile(id, fields) {
-  if (!META_PAGE_ACCESS_TOKEN || !id) return null;
+function profileTokenFor(type) {
+  return type === 'instagram' ? META_INSTAGRAM_ACCESS_TOKEN : META_PAGE_ACCESS_TOKEN;
+}
+
+async function fetchGraphProfile(id, fields, accessToken) {
+  if (!accessToken || !id) return null;
   const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(id)}`);
   url.searchParams.set('fields', fields);
-  url.searchParams.set('access_token', META_PAGE_ACCESS_TOKEN);
+  url.searchParams.set('access_token', accessToken);
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
   const text = await response.text();
   let data = null;
@@ -107,12 +112,15 @@ async function enrichContactFromMeta(contact, channel) {
   if (!['facebook_messenger', 'instagram'].includes(type)) return contact;
 
   const attemptedAt = new Date().toISOString();
-  if (!META_PAGE_ACCESS_TOKEN) {
+  const accessToken = profileTokenFor(type);
+  const tokenEnvName = type === 'instagram' ? 'META_INSTAGRAM_ACCESS_TOKEN' : 'META_PAGE_ACCESS_TOKEN';
+
+  if (!accessToken) {
     return persistMetaProfileSync(contact, {
       ok: false,
       platform: type,
       code: 'TOKEN_NOT_CONFIGURED',
-      message: 'META_PAGE_ACCESS_TOKEN no está disponible en este deployment de Production.',
+      message: `${tokenEnvName} no está disponible en este deployment de Production.`,
       token_configured: false,
       attempted_at: attemptedAt
     });
@@ -122,7 +130,7 @@ async function enrichContactFromMeta(contact, channel) {
     const fields = type === 'instagram'
       ? 'id,name,username,profile_pic'
       : 'id,first_name,last_name,profile_pic';
-    const profile = await fetchGraphProfile(contact.external_user_id, fields);
+    const profile = await fetchGraphProfile(contact.external_user_id, fields, accessToken);
 
     if (!profile) {
       return persistMetaProfileSync(contact, {
@@ -297,6 +305,7 @@ module.exports = async function handler(req, res) {
         ok: true,
         organization,
         meta_profile_configured: Boolean(META_PAGE_ACCESS_TOKEN),
+        instagram_profile_configured: Boolean(META_INSTAGRAM_ACCESS_TOKEN),
         conversation: { ...conversation, channel_label: channelName(conversation.channel?.channel_type) },
         messages: messages || []
       });
@@ -320,6 +329,7 @@ module.exports = async function handler(req, res) {
       ok: true,
       organization,
       meta_profile_configured: Boolean(META_PAGE_ACCESS_TOKEN),
+      instagram_profile_configured: Boolean(META_INSTAGRAM_ACCESS_TOKEN),
       conversations: data,
       unread_total: data.reduce((sum, x) => sum + Number(x.unread_count || 0), 0)
     });
