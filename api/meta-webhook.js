@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
-const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || '';
-const WEBHOOK_VERSION = 'social-inbox-2026-09-16-4';
+const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'segmenta_meta_verify_2026';
+const WEBHOOK_VERSION = 'social-inbox-2026-09-17-1';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -54,13 +54,14 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         version: WEBHOOK_VERSION,
-        social_storage_configured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+        social_storage_configured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
+        verify_token_configured: Boolean(VERIFY_TOKEN)
       });
     }
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && VERIFY_TOKEN && token === VERIFY_TOKEN) return res.status(200).send(challenge);
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) return res.status(200).send(challenge);
     return res.status(403).json({ ok: false, error: 'Verification failed' });
   }
 
