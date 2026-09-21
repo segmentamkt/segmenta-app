@@ -158,7 +158,22 @@
 </section>
 
 <section class="content hidden" id="page-channels"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Canales</h1><p>Conexiones de mensajería del CRM.</p></div></div><div class="channel-list"><div class="channel-card"><div class="channel-icon fb">f</div><div class="channel-body"><div class="channel-name">Facebook Messenger</div><div class="channel-desc">Página Segmenta-Marketing Digital conectada al webhook y a la Bandeja.</div></div><span class="state ok">Conectado</span></div><div class="channel-card"><div class="channel-icon ig">◎</div><div class="channel-body"><div class="channel-name">Instagram</div><div class="channel-desc">Pendiente de conexión de mensajería.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon wa">◔</div><div class="channel-body"><div class="channel-name">WhatsApp</div><div class="channel-desc">Pendiente de conexión.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon">♪</div><div class="channel-body"><div class="channel-name">TikTok</div><div class="channel-desc">Fase posterior.</div></div><span class="state wait">Próximamente</span></div></div></section>
-<section class="content hidden" id="page-integrations"><div class="page-head"><div><div class="eyebrow">Ecosistema</div><h1>Integraciones</h1><p>Conectores por empresa sin mezclar credenciales ni datos.</p></div></div><div class="feature-grid"><div class="feature-card"><b><span class="status-dot"></span>Meta</b><p>Messenger e Instagram usan el webhook existente. Lead Ads conserva su recepción actual.</p></div><div class="feature-card"><b>WhatsApp</b><p>Onboarding multiempresa mediante la plataforma oficial de Meta; no sesiones no oficiales de WhatsApp Web.</p></div><div class="feature-card"><b>Skydropx</b><p>Módulo reservado para tarifas, peso total, recaudo, guía y seguimiento. Requiere portar la integración existente de Wired.</p></div><div class="feature-card"><b>OpenAI / Anthropic / Gemini</b><p>Proveedores del agente IA configurables por backend.</p></div><div class="feature-card"><b>Wired</b><p>Entrada futura de contactos, clientes, cotizaciones, pedidos y guías desde la tienda pública.</p></div><div class="feature-card"><b>Webhooks</b><p>Base multiempresa preparada para eventos externos con trazabilidad.</p></div></div></section>
+<section class="content hidden" id="page-integrations">
+  <div class="page-head"><div><div class="eyebrow">Ecosistema</div><h1>Integraciones</h1><p>Conexiones propias de la empresa activa. Nada se comparte entre empresas.</p></div><button class="btn" onclick="loadIntegrations()">↻ Actualizar</button></div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <b>Meta Business</b>
+      <p id="metaIntegrationText">Conecta el portafolio empresarial de esta empresa para administrar sus páginas, Instagram y activos autorizados.</p>
+      <div id="metaIntegrationState" style="margin-top:10px"><span class="state off">No conectado</span></div>
+      <div class="inline-actions" style="margin-top:12px"><button class="btn primary" id="metaConnectBtn" onclick="beginMetaBusinessConnection()">Conectar portafolio Meta</button><button class="btn danger hidden" id="metaDisconnectBtn" onclick="disconnectMetaBusiness()">Desconectar</button></div>
+    </div>
+    <div class="feature-card"><b>WhatsApp</b><p>Onboarding multiempresa mediante la plataforma oficial de Meta. Cada empresa conecta su propio WABA y número.</p><span class="state wait">Pendiente de configuración</span></div>
+    <div class="feature-card"><b>Skydropx</b><p>Credenciales, tarifas, guías y seguimiento separados por empresa.</p><span class="state wait">Pendiente</span></div>
+    <div class="feature-card"><b>OpenAI / Anthropic / Gemini</b><p>Cada empresa podrá usar su propio proveedor y credenciales del agente IA.</p><span class="state wait">Pendiente</span></div>
+    <div class="feature-card"><b>Wired / tienda externa</b><p>Webhooks de contactos, cotizaciones, pedidos, clientes y guías hacia la empresa activa.</p><span class="state wait">Pendiente</span></div>
+    <div class="feature-card"><b>Canales detectados</b><p id="integrationChannelsSummary">Cargando canales...</p></div>
+  </div>
+</section>
 <section class="content hidden" id="page-reports"><div class="page-head"><div><div class="eyebrow">Resultados</div><h1>Reportes</h1><p>Métricas comerciales y adquisición.</p></div></div><div class="placeholder"><h3>Reportes en construcción</h3><p>Se conectarán a la base persistente del CRM.</p></div></section>
 <section class="content hidden" id="page-admin">
   <div class="page-head"><div><div class="eyebrow">Administración</div><h1>Empresas y usuarios</h1><p>Crea espacios separados por empresa y asigna accesos al CRM.</p></div><button class="btn" onclick="loadAdmin()">↻ Actualizar</button></div>
@@ -296,6 +311,52 @@ function renderContactDetails(c){const ct=c.contact||{},md=ct.metadata||{},n=con
 async function saveInboxContact(){if(!activeConversationId||!activeConversationData)return;const body={conversation_id:activeConversationId,display_name:document.getElementById('dName').value,phone:document.getElementById('dPhone').value,email:document.getElementById('dEmail').value,metadata:{business:document.getElementById('dBusiness').value,city:document.getElementById('dCity').value,source:document.getElementById('dSource').value,interest:document.getElementById('dInterest').value,lead_status:document.getElementById('dStatus').value,responsible:document.getElementById('dResponsible').value,notes:document.getElementById('dNotes').value}};try{const r=await fetch('/api/crm-inbox',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error();contactFormDirty=false;toast('Ficha guardada');await loadInbox(true);await loadConversation(activeConversationId,false)}catch(_){toast('No fue posible guardar la ficha')}}
 function syncContactToLead(){if(!activeConversationData?.contact)return;const ct=activeConversationData.contact,md=ct.metadata||{};const vals={name:document.getElementById('dName')?.value||ct.display_name||'',business:document.getElementById('dBusiness')?.value||md.business||'',phone:document.getElementById('dPhone')?.value||ct.phone||'',email:document.getElementById('dEmail')?.value||ct.email||'',service:'Pauta',goal:'Leads',budget:'',source:document.getElementById('dSource')?.value||md.source||'Meta',status:document.getElementById('dStatus')?.value||md.lead_status||'nuevo',nextAction:'',campaign:'',adset:'',ad:'',notes:document.getElementById('dNotes')?.value||md.notes||'',inboxContactId:ct.id,externalUserId:ct.external_user_id};let x=leads.find(a=>a.inboxContactId===ct.id);const now=new Date().toISOString();if(x)Object.assign(x,vals,{updatedAt:now});else leads.unshift({...vals,id:gid(),createdAt:now,updatedAt:now});persist();render();toast(x?'Lead actualizado en pipeline':'Lead creado en pipeline')}
 async function deleteInboxContact(){if(!activeConversationId||!activeConversationData?.contact)return;const n=contactLabel({...activeConversationData,channel_label:activeConversationData.channel_label});if(!confirm(`¿Eliminar definitivamente a ${n}?\n\nSe borrarán el contacto, la conversación y sus mensajes del CRM.`))return;const contactId=activeConversationData.contact.id;try{const r=await fetch('/api/crm-inbox?org='+encodeURIComponent(currentOrgSlug)+'&conversation_id='+encodeURIComponent(activeConversationId)+'&delete_contact=1',{method:'DELETE'});if(!r.ok)throw new Error();leads=leads.filter(x=>x.inboxContactId!==contactId);persist();activeConversationId=null;activeConversationData=null;document.getElementById('chatContent').classList.add('hidden');document.getElementById('chatEmpty').classList.remove('hidden');document.getElementById('contactBody').innerHTML='<div class="inbox-loading">La ficha del lead aparecerá aquí.</div>';document.getElementById('detailName').textContent='Sin contacto';render();await loadInbox(false);toast('Lead y conversación eliminados')}catch(_){toast('No fue posible eliminar el contacto')}}
+let integrationState={integrations:[],channels:[],capabilities:{}};
+async function loadIntegrations(){
+  try{
+    const r=await fetch('/api/crm-integrations',{cache:'no-store'}),j=await r.json();
+    if(r.status===401){await ensureCrmAuth(false);return}
+    if(!r.ok)throw new Error(j.error||'Error');
+    integrationState=j;
+    const meta=(j.integrations||[]).find(x=>x.provider==='meta'&&x.integration_type==='business_portfolio'&&x.status!=='disconnected');
+    const state=document.getElementById('metaIntegrationState'),textEl=document.getElementById('metaIntegrationText'),connect=document.getElementById('metaConnectBtn'),disconnect=document.getElementById('metaDisconnectBtn');
+    if(meta&&meta.status==='connected'){
+      state.innerHTML='<span class="state ok">Conectado</span>';
+      textEl.innerHTML='<b>'+esc(meta.display_name||'Portafolio Meta')+'</b><br>ID: '+esc(meta.external_account_id||'—');
+      connect.classList.add('hidden');disconnect.classList.remove('hidden');disconnect.dataset.integrationId=meta.id;
+    }else if(meta&&meta.status==='pending'){
+      state.innerHTML='<span class="state wait">Conexión pendiente</span>';
+      textEl.textContent='La autorización de Meta está iniciada pero todavía no se completó.';
+      connect.classList.remove('hidden');connect.textContent='Continuar conexión';disconnect.classList.add('hidden');
+    }else{
+      state.innerHTML='<span class="state off">No conectado</span>';
+      connect.classList.remove('hidden');connect.textContent='Conectar portafolio Meta';disconnect.classList.add('hidden');
+      const ready=j.capabilities?.meta_business_login?.ready;
+      textEl.textContent=ready?'Conecta el portafolio empresarial de esta empresa para administrar sus activos autorizados.':'La estructura por empresa ya está lista. Falta terminar la configuración de Facebook Login for Business en la app de Meta.';
+    }
+    const ch=j.channels||[];
+    document.getElementById('integrationChannelsSummary').textContent=ch.length?ch.map(x=>(x.external_account_name||x.external_account_id||x.channel_type)+' · '+x.channel_type).join(' | '):'Todavía no hay canales conectados para esta empresa.';
+  }catch(err){toast(err.message||'No fue posible cargar integraciones')}
+}
+async function beginMetaBusinessConnection(){
+  try{
+    const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'begin_meta_business'})}),j=await r.json();
+    if(!r.ok){
+      if(j.code==='META_LOGIN_NOT_READY'){toast('Primero debemos crear la configuración de Facebook Login for Business en Meta.');return}
+      throw new Error(j.error||'No fue posible iniciar Meta');
+    }
+    if(j.authorization_url) window.location.href=j.authorization_url;
+  }catch(err){toast(err.message||'No fue posible iniciar la conexión')}
+}
+async function disconnectMetaBusiness(){
+  const id=document.getElementById('metaDisconnectBtn').dataset.integrationId;if(!id)return;
+  if(!confirm('¿Desconectar el portafolio Meta de esta empresa?'))return;
+  try{
+    const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'disconnect',integration_id:id})}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    toast('Portafolio desconectado');await loadIntegrations();
+  }catch(err){toast(err.message||'No fue posible desconectar')}
+}
 function roleLabel(role){return ({admin:'Administrador',sales:'Ventas',inventory:'Inventario / Bodega',editor:'Editor',viewer:'Solo lectura',agent:'Ventas'})[role]||'Usuario'}
 function money(v){return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0)}
 function dateTime(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(_){return '—'}}
@@ -303,7 +364,7 @@ async function commercialGet(type){const r=await fetch('/api/crm-commercial?type
 async function commercialSend(method,body,url='/api/crm-commercial'){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error||'No fue posible completar la operación');return j}
 async function loadCurrentModule(force=false){
   if(!crmSession&&currentPage!=='inbox'){return}
-  const loaders={dashboard:loadDashboard,inbox:()=>ensureInboxAuth(),crm:loadOpportunities,cap:loadCap,quotes:loadQuotes,orders:loadOrders,contacts:loadCentralContacts,tasks:loadTasks,analytics:loadDashboard,admin:loadAdmin};
+  const loaders={dashboard:loadDashboard,inbox:()=>ensureInboxAuth(),crm:loadOpportunities,cap:loadCap,quotes:loadQuotes,orders:loadOrders,contacts:loadCentralContacts,tasks:loadTasks,analytics:loadDashboard,integrations:loadIntegrations,admin:loadAdmin};
   const fn=loaders[currentPage];if(fn)try{await fn(force)}catch(_){}
 }
 async function loadDashboard(){
