@@ -40,23 +40,23 @@ async function sb(path, options = {}) {
 }
 
 async function getOrgBySlug(slug) {
-  const rows = await sb(`crm_organizations?slug=eq.${encodeURIComponent(slug)}&status=eq.active&select=id,name,slug,status&limit=1`);
+  const rows = await sb(`crm_organizations?slug=eq.${encodeURIComponent(slug)}&status=eq.active&select=id,name,slug,status,crm_path&limit=1`);
   return rows?.[0] || null;
 }
 
 async function getMemberships(userId) {
-  return sb(`crm_memberships?user_id=eq.${encodeURIComponent(userId)}&status=eq.active&select=role,is_default,organization:crm_organizations(id,name,slug,status)&order=is_default.desc,created_at.asc`);
+  return sb(`crm_memberships?user_id=eq.${encodeURIComponent(userId)}&status=eq.active&select=role,is_default,permissions,organization:crm_organizations(id,name,slug,status,crm_path)&order=is_default.desc,created_at.asc`);
 }
 
 async function organizationsForSession(session) {
   if (isPlatformAdmin(session)) {
-    return sb('crm_organizations?status=eq.active&select=id,name,slug,status&order=name.asc');
+    return sb('crm_organizations?status=eq.active&select=id,name,slug,status,crm_path&order=name.asc');
   }
   if (!session?.sub) return [];
   const memberships = await getMemberships(session.sub);
   return (memberships || [])
     .filter(x => x.organization?.status === 'active')
-    .map(x => ({ ...x.organization, role: x.role, is_default: x.is_default }));
+    .map(x => ({ ...x.organization, role: x.role, is_default: x.is_default, permissions: x.permissions || {} }));
 }
 
 async function signInSupabase(email, password) {
@@ -92,7 +92,8 @@ module.exports = async function handler(req, res) {
             sub: 'legacy-superadmin',
             email: EXPECTED_EMAIL,
             platform_role: 'super_admin',
-            role: 'admin',
+            role: 'owner',
+            permissions: {},
             organization_id: legacyOrg.id,
             organization_slug: legacyOrg.slug,
             organization_name: legacyOrg.name
@@ -106,6 +107,7 @@ module.exports = async function handler(req, res) {
         authenticated: true,
         email: session.email,
         role: session.role || 'viewer',
+        permissions: session.permissions || {},
         platform_admin: isPlatformAdmin(session),
         organization: session.organization_id ? {
           id: session.organization_id,
@@ -129,15 +131,18 @@ module.exports = async function handler(req, res) {
 
       let org = null;
       let role = session.role || 'viewer';
+      let permissions = session.permissions || {};
       if (isPlatformAdmin(session)) {
         org = await getOrgBySlug(orgSlug);
-        role = 'admin';
+        role = 'owner';
+        permissions = {};
       } else {
         const memberships = await getMemberships(session.sub);
         const match = (memberships || []).find(x => x.organization?.slug === orgSlug && x.organization?.status === 'active');
         if (match) {
           org = match.organization;
           role = match.role;
+          permissions = match.permissions || {};
         }
       }
       if (!org) return res.status(403).json({ ok: false, error: 'No tienes acceso a esa empresa' });
@@ -147,11 +152,12 @@ module.exports = async function handler(req, res) {
         email: session.email,
         platform_role: session.platform_role || null,
         role,
+        permissions,
         organization_id: org.id,
         organization_slug: org.slug,
         organization_name: org.name
       });
-      return res.status(200).json({ ok: true, organization: org, role });
+      return res.status(200).json({ ok: true, organization: org, role, permissions });
     }
 
     if (req.method !== 'POST') {
@@ -173,7 +179,8 @@ module.exports = async function handler(req, res) {
         sub: 'legacy-superadmin',
         email,
         platform_role: 'super_admin',
-        role: 'admin',
+        role: 'owner',
+        permissions: {},
         organization_id: org.id,
         organization_slug: org.slug,
         organization_name: org.name
@@ -188,13 +195,18 @@ module.exports = async function handler(req, res) {
     const available = (memberships || []).filter(x => x.organization?.status === 'active');
     if (!available.length) return res.status(403).json({ ok: false, error: 'Tu usuario no tiene una empresa activa asignada' });
 
-    const selected = available.find(x => x.is_default) || available[0];
+    const requestedWorkspace = String(req.body?.workspace || '').trim().toLowerCase();
+    const selected = requestedWorkspace
+      ? available.find(x => x.organization?.slug === requestedWorkspace)
+      : (available.find(x => x.is_default) || available[0]);
+    if (!selected) return res.status(403).json({ ok: false, error: 'Tu usuario no tiene acceso a este CRM' });
     const org = selected.organization;
     setSession(res, {
       sub: user.id,
       email: user.email || email,
       platform_role: null,
       role: selected.role,
+      permissions: selected.permissions || {},
       organization_id: org.id,
       organization_slug: org.slug,
       organization_name: org.name
@@ -205,6 +217,7 @@ module.exports = async function handler(req, res) {
       authenticated: true,
       platform_admin: false,
       role: selected.role,
+      permissions: selected.permissions || {},
       organization: org
     });
   } catch (error) {
