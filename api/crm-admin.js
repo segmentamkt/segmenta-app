@@ -56,6 +56,30 @@ function canManageOrg(session, organizationId) {
   return session?.role === 'admin' && session?.organization_id === organizationId;
 }
 
+const ALLOWED_ROLES = ['admin','sales','inventory','editor','viewer','agent'];
+
+async function audit(session, organizationId, action, entityType, entityId, beforeData = null, afterData = null, metadata = {}) {
+  try {
+    await sb('crm_audit_log', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        organization_id: organizationId || null,
+        actor_user_id: session?.sub && session.sub !== 'legacy-superadmin' ? session.sub : null,
+        actor_email: session?.email || null,
+        action,
+        entity_type: entityType,
+        entity_id: entityId ? String(entityId) : null,
+        before_data: beforeData,
+        after_data: afterData,
+        metadata
+      })
+    });
+  } catch (e) {
+    console.warn('CRM_ADMIN_AUDIT_ERROR', e.message);
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const session = verifySession(req);
@@ -68,7 +92,7 @@ module.exports = async function handler(req, res) {
       const allowedIds = (organizations || []).map(x => x.id);
       let memberships = [];
       if (allowedIds.length) {
-        memberships = await sb(`crm_memberships?organization_id=in.(${allowedIds.join(',')})&select=id,organization_id,user_id,email,display_name,role,status,is_default,created_at&order=created_at.asc`);
+        memberships = await sb(`crm_memberships?organization_id=in.(${allowedIds.join(',')})&select=id,organization_id,user_id,email,display_name,role,status,is_default,permissions,created_at&order=created_at.asc`);
       }
       return res.status(200).json({ ok: true, organizations: organizations || [], memberships: memberships || [], platform_admin: isPlatformAdmin(session) });
     }
@@ -90,7 +114,9 @@ module.exports = async function handler(req, res) {
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ name, slug, status: 'active' })
       });
-      return res.status(201).json({ ok: true, organization: rows?.[0] || null });
+      const organization = rows?.[0] || null;
+      if (organization) await audit(session, organization.id, 'organization.created', 'organization', organization.id, null, organization);
+      return res.status(201).json({ ok: true, organization });
     }
 
     if (req.method === 'POST' && action === 'create_user') {
@@ -100,7 +126,8 @@ module.exports = async function handler(req, res) {
       const email = String(req.body?.email || '').trim().toLowerCase();
       const password = String(req.body?.password || '');
       const displayName = String(req.body?.display_name || '').trim();
-      const role = ['admin','agent','viewer'].includes(req.body?.role) ? req.body.role : 'agent';
+      const role = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : 'sales';
+      const permissions = req.body?.permissions && typeof req.body.permissions === 'object' ? req.body.permissions : {};
       if (!email || !email.includes('@')) return res.status(400).json({ ok: false, error: 'Correo inválido' });
       if (password.length < 8) return res.status(400).json({ ok: false, error: 'La contraseña debe tener mínimo 8 caracteres' });
 
@@ -126,10 +153,13 @@ module.exports = async function handler(req, res) {
             display_name: displayName || null,
             role,
             status: 'active',
-            is_default: true
+            is_default: true,
+            permissions
           })
         });
-        return res.status(201).json({ ok: true, membership: rows?.[0] || null });
+        const membership = rows?.[0] || null;
+        if (membership) await audit(session, organizationId, 'user.created', 'membership', membership.id, null, membership, { user_id: createdUser.id });
+        return res.status(201).json({ ok: true, membership });
       } catch (error) {
         if (createdUser?.id) {
           try { await authAdmin(`users/${createdUser.id}`, { method: 'DELETE' }); } catch (_) {}
@@ -141,18 +171,21 @@ module.exports = async function handler(req, res) {
     if (req.method === 'PATCH' && action === 'update_membership') {
       const membershipId = String(req.body?.membership_id || '').trim();
       if (!membershipId) return res.status(400).json({ ok: false, error: 'membership_id requerido' });
-      const found = await sb(`crm_memberships?id=eq.${encodeURIComponent(membershipId)}&select=id,organization_id&limit=1`);
+      const found = await sb(`crm_memberships?id=eq.${encodeURIComponent(membershipId)}&select=*&limit=1`);
       const membership = found?.[0];
       if (!membership || !canManageOrg(session, membership.organization_id)) return res.status(403).json({ ok: false, error: 'No autorizado' });
       const patch = { updated_at: new Date().toISOString() };
-      if (['admin','agent','viewer'].includes(req.body?.role)) patch.role = req.body.role;
+      if (ALLOWED_ROLES.includes(req.body?.role)) patch.role = req.body.role;
       if (['active','disabled'].includes(req.body?.status)) patch.status = req.body.status;
+      if (req.body?.permissions && typeof req.body.permissions === 'object') patch.permissions = req.body.permissions;
       const rows = await sb(`crm_memberships?id=eq.${encodeURIComponent(membershipId)}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify(patch)
       });
-      return res.status(200).json({ ok: true, membership: rows?.[0] || null });
+      const updated = rows?.[0] || null;
+      if (updated) await audit(session, membership.organization_id, 'user.permissions_updated', 'membership', membership.id, membership, updated);
+      return res.status(200).json({ ok: true, membership: updated });
     }
 
     return res.status(400).json({ ok: false, error: 'Acción no válida' });
