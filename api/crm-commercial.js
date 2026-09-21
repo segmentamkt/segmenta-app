@@ -111,6 +111,11 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      if (type === 'contacts') {
+        const rows = await sb(`crm_contacts?organization_id=eq.${orgId}&select=id,display_name,phone,email,metadata,created_at,updated_at,channel:crm_channels(id,channel_type,external_account_name)&order=updated_at.desc`);
+        return res.status(200).json({ ok: true, contacts: rows || [] });
+      }
+
       if (type === 'opportunities') {
         const rows = await sb(`crm_opportunities?organization_id=eq.${orgId}&select=*,contact:crm_contacts(id,display_name,phone,email,metadata),conversation:crm_conversations(id),cap:crm_cap(*)&order=updated_at.desc`);
         return res.status(200).json({ ok: true, opportunities: rows || [] });
