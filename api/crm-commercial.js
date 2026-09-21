@@ -1,4 +1,4 @@
-const { verifySession, isPlatformAdmin } = require('./_crm-session');
+const { verifySession, isPlatformAdmin, isOrgOwner, hasModuleAccess } = require('./_crm-session');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -29,14 +29,11 @@ function num(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
-function canWrite(session) {
-  return isPlatformAdmin(session) || ['admin','sales','inventory','editor','agent'].includes(session?.role);
-}
 function canManageOrders(session) {
-  return isPlatformAdmin(session) || ['admin','inventory'].includes(session?.role);
+  return isPlatformAdmin(session) || isOrgOwner(session) || ['admin','inventory'].includes(session?.role);
 }
 function canDeleteSensitive(session) {
-  return isPlatformAdmin(session) || session?.role === 'admin';
+  return isPlatformAdmin(session) || isOrgOwner(session) || session?.role === 'admin';
 }
 async function organizationForSession(session) {
   if (!session?.organization_id) return null;
@@ -87,6 +84,19 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       const type = String(req.query?.type || 'dashboard');
+      const moduleByType = {
+        dashboard: 'dashboard',
+        contacts: 'contacts',
+        opportunities: 'crm',
+        quotes: 'quotes',
+        orders: 'orders',
+        tasks: 'tasks',
+        audit: 'settings'
+      };
+      const requestedModule = moduleByType[type];
+      if (requestedModule && !hasModuleAccess(session, requestedModule, 'read')) {
+        return res.status(403).json({ ok: false, error: 'No tienes acceso a este módulo' });
+      }
 
       if (type === 'dashboard') {
         const [opps, quotes, orders, tasks] = await Promise.all([
@@ -140,10 +150,18 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ ok: false, error: 'Unknown type' });
     }
 
-    if (!canWrite(session)) return res.status(403).json({ ok: false, error: 'Acceso de solo lectura' });
-
     if (req.method === 'POST') {
       const action = String(req.body?.action || '');
+      const postAccess = {
+        create_opportunity: ['crm','create'],
+        create_quote: ['quotes','create'],
+        convert_quote_to_order: ['orders','create'],
+        create_task: ['tasks','create'],
+        reset_cap: ['cap','edit']
+      }[action];
+      if (postAccess && !hasModuleAccess(session, postAccess[0], postAccess[1])) {
+        return res.status(403).json({ ok: false, error: 'No tienes permiso para realizar esta acción' });
+      }
 
       if (action === 'create_opportunity') {
         const title = clean(req.body?.title, 300);
@@ -259,6 +277,16 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'PATCH') {
       const action=String(req.body?.action||'');
+      const patchAccess = {
+        update_opportunity: ['crm','edit'],
+        update_cap: ['cap','edit'],
+        update_order: ['orders','edit'],
+        cancel_order: ['orders','cancel'],
+        update_task: ['tasks','edit']
+      }[action];
+      if (patchAccess && !hasModuleAccess(session, patchAccess[0], patchAccess[1])) {
+        return res.status(403).json({ ok: false, error: 'No tienes permiso para realizar esta acción' });
+      }
 
       if(action==='update_opportunity'){
         const id=String(req.body?.id||'');
@@ -332,7 +360,7 @@ module.exports = async function handler(req, res) {
       const type=String(req.query?.type||'');
       const id=String(req.query?.id||'');
       if(type==='order'){
-        if(!canDeleteSensitive(session))return res.status(403).json({ok:false,error:'Solo administradores pueden eliminar pedidos'});
+        if(!hasModuleAccess(session,'orders','delete') || !canDeleteSensitive(session))return res.status(403).json({ok:false,error:'No tienes permiso para eliminar pedidos'});
         const before=await scopedOne('crm_orders',id,orgId);
         if(!before)return res.status(404).json({ok:false,error:'Pedido no encontrado'});
         if(before.tracking_number || !['pending','unpaid',''].includes(String(before.payment_status||''))){
