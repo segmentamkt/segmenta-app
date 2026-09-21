@@ -59,13 +59,94 @@
 <main class="main">
 <header class="topbar"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="crumb">Admin / <b id="crumbTitle">CRM</b></div><div class="top-search" id="globalSearch"><input id="topQ" placeholder="Buscar lead, empresa o teléfono..." oninput="syncSearch(this.value)"></div><button class="icon-btn" onclick="refreshCurrentPage()">↻</button></header>
 
-<section class="content" id="page-pipeline">
+<section class="content" id="page-dashboard">
+  <div class="page-head"><div><div class="eyebrow">Control central</div><h1>Dashboard</h1><p>Resumen comercial y operativo de la empresa activa.</p></div><button class="btn" onclick="loadDashboard()">↻ Actualizar</button></div>
+  <div class="metric-grid">
+    <div class="metric-card"><div class="k">Oportunidades</div><div class="v" id="mOpportunities">0</div><div class="s">Pipeline abierto</div></div>
+    <div class="metric-card"><div class="k">Valor pipeline</div><div class="v" id="mPipelineValue">$0</div><div class="s">COP</div></div>
+    <div class="metric-card"><div class="k">Cotizaciones</div><div class="v" id="mQuotes">0</div><div class="s">Abiertas</div></div>
+    <div class="metric-card"><div class="k">Pedidos</div><div class="v" id="mOrders">0</div><div class="s">Activos</div></div>
+    <div class="metric-card"><div class="k">Tareas</div><div class="v" id="mTasks">0</div><div class="s">Pendientes</div></div>
+    <div class="metric-card"><div class="k">Ventas ganadas</div><div class="v" id="mWonValue">$0</div><div class="s">Valor acumulado</div></div>
+  </div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Pipeline por etapa</h3><p>Distribución de oportunidades de la empresa activa.</p><div id="dashboardStages" class="empty-state">Cargando...</div></section>
+    <section class="module-card"><h3>Estado del ecosistema</h3><p>Infraestructura que no debemos romper durante la migración.</p><div class="feature-grid"><div class="feature-card"><b><span class="status-dot"></span>Bandeja</b><p>Messenger e Instagram continúan usando el webhook existente.</p></div><div class="feature-card"><b><span class="status-dot"></span>Multiempresa</b><p>Todos los módulos nuevos se filtran por organization_id.</p></div><div class="feature-card"><b><span class="status-dot"></span>Auditoría</b><p>Acciones sensibles quedan registradas por empresa y usuario.</p></div></div></section>
+  </div>
+</section>
+
+<section class="content hidden" id="page-crm">
+  <div class="page-head"><div><div class="eyebrow">Comercial</div><h1>CRM</h1><p>Oportunidades centralizadas en Supabase, compartidas por todos los usuarios de la empresa.</p></div><button class="btn" onclick="loadOpportunities()">↻ Actualizar</button></div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Nueva oportunidad</h3><p>Se crea automáticamente con un registro CAP activo.</p>
+      <form class="form-grid" onsubmit="createOpportunity(event)">
+        <div class="field full"><label>Nombre de la oportunidad</label><input id="oppTitle" required placeholder="Ej. Venta mayorista Bogotá"></div>
+        <div class="field"><label>Etapa</label><select id="oppStage"><option value="new">Nuevo</option><option value="contacted">Contactado</option><option value="qualified">Calificado</option><option value="proposal">Propuesta</option><option value="negotiation">Negociación</option></select></div>
+        <div class="field"><label>Valor estimado</label><input id="oppValue" type="number" min="0" step="1000"></div>
+        <div class="field"><label>Producto</label><input id="oppProduct"></div>
+        <div class="field"><label>Ciudad</label><input id="oppCity"></div>
+        <div class="field"><label>Origen</label><input id="oppSource" placeholder="Instagram, Messenger, WhatsApp..."></div>
+        <div class="field"><label>Próximo seguimiento</label><input id="oppFollowup" type="datetime-local"></div>
+        <div class="field full"><label>Notas</label><textarea id="oppNotes"></textarea></div>
+        <button class="btn primary full" type="submit">＋ Crear oportunidad</button>
+      </form>
+    </section>
+    <section class="module-card"><h3>Metodología CAP</h3><p>Cada oportunidad mantiene paso, decisión, etiqueta, próxima acción, secuencia y cierre.</p><div class="feature-grid"><div class="feature-card"><b>Reinicio</b><p>CAP puede reiniciarse cuando entra una conversación nueva o cuando interviene un vendedor.</p></div><div class="feature-card"><b>Seguimiento</b><p>Próxima acción y fecha quedan listas para automatización.</p></div><div class="feature-card"><b>Escalamiento</b><p>La estructura soporta llamada o seguimiento por falta de respuesta.</p></div></div></section>
+  </div>
+  <section class="workspace" style="margin-top:16px"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Oportunidad</th><th>Etapa</th><th>Valor</th><th>Producto</th><th>Ciudad</th><th>CAP</th><th>Seguimiento</th></tr></thead><tbody id="opportunitiesBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-cap">
+  <div class="page-head"><div><div class="eyebrow">Metodología comercial</div><h1>Pipeline / CAP</h1><p>Seguimiento operativo de cada oportunidad.</p></div><button class="btn" onclick="loadCap()">↻ Actualizar</button></div>
+  <section class="workspace"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Oportunidad</th><th>Etapa</th><th>Paso CAP</th><th>Decisión</th><th>Etiqueta</th><th>Próxima acción</th><th>Secuencia</th><th>Acciones</th></tr></thead><tbody id="capBody"><tr><td colspan="8">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-quotes">
+  <div class="page-head"><div><div class="eyebrow">Ventas</div><h1>Cotizaciones</h1><p>Crea cotizaciones y conviértelas en pedido sin salir del CRM.</p></div><button class="btn" onclick="loadQuotes()">↻ Actualizar</button></div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Nueva cotización</h3><p>Versión inicial con una línea de producto; la estructura admite múltiples ítems.</p>
+      <form class="form-grid" onsubmit="createQuote(event)">
+        <div class="field full"><label>Producto / descripción</label><input id="quoteDescription" required></div>
+        <div class="field"><label>Cantidad</label><input id="quoteQty" type="number" min="0.001" step="1" value="1" required></div>
+        <div class="field"><label>Precio unitario</label><input id="quoteUnitPrice" type="number" min="0" step="100" required></div>
+        <div class="field"><label>Descuento total</label><input id="quoteDiscount" type="number" min="0" step="100" value="0"></div>
+        <div class="field"><label>Costo de envío</label><input id="quoteShipping" type="number" min="0" step="100" value="0"></div>
+        <div class="field"><label>Vigencia</label><input id="quoteValidUntil" type="date"></div>
+        <div class="field full"><label>Observaciones</label><textarea id="quoteObservations"></textarea></div>
+        <button class="btn primary full" type="submit">＋ Crear cotización</button>
+      </form>
+    </section>
+    <section class="module-card"><h3>Flujo</h3><p>La cotización conserva totales, descuento, envío y trazabilidad.</p><div class="feature-grid"><div class="feature-card"><b>Borrador</b><p>Preparar y revisar antes de enviar.</p></div><div class="feature-card"><b>Aprobada</b><p>Lista para convertir a pedido.</p></div><div class="feature-card"><b>Pedido</b><p>Conversión conserva los productos y valores.</p></div></div></section>
+  </div>
+  <section class="workspace" style="margin-top:16px"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Número</th><th>Estado</th><th>Subtotal</th><th>Envío</th><th>Total</th><th>Vigencia</th><th>Acciones</th></tr></thead><tbody id="quotesBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-orders">
+  <div class="page-head"><div><div class="eyebrow">Operación</div><h1>Pedidos</h1><p>Pago, despacho, guía y trazabilidad del pedido.</p></div><button class="btn" onclick="loadOrders()">↻ Actualizar</button></div>
+  <section class="workspace"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Despacho</th><th>Guía</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="ordersBody"><tr><td colspan="8">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-tasks">
+  <div class="page-head"><div><div class="eyebrow">Seguimiento</div><h1>Tareas</h1><p>Recordatorios manuales y base para automatizaciones comerciales.</p></div><button class="btn" onclick="loadTasks()">↻ Actualizar</button></div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Nueva tarea</h3><form class="form-grid" onsubmit="createTask(event)"><div class="field full"><label>Título</label><input id="taskTitle" required></div><div class="field"><label>Vencimiento</label><input id="taskDue" type="datetime-local"></div><div class="field"><label>Prioridad</label><select id="taskPriority"><option value="low">Baja</option><option value="normal" selected>Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div><div class="field full"><label>Descripción</label><textarea id="taskDescription"></textarea></div><button class="btn primary full" type="submit">＋ Crear tarea</button></form></section>
+    <section class="module-card"><h3>Automatización preparada</h3><p>Las tareas pueden asociarse posteriormente a CAP, vendedor, contacto y reglas de falta de respuesta.</p></section>
+  </div>
+  <section class="workspace" style="margin-top:16px"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Tarea</th><th>Prioridad</th><th>Vencimiento</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tasksBody"><tr><td colspan="5">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-ai"><div class="page-head"><div><div class="eyebrow">IA comercial</div><h1>Agente IA</h1><p>Centro del agente comercial por empresa.</p></div></div><div class="feature-grid"><div class="feature-card"><b>Conocimiento</b><p>Productos, precios, inventario, clientes, CAP, pedidos, cotizaciones y documentación interna.</p></div><div class="feature-card"><b>Proveedores</b><p>Arquitectura preparada para OpenAI, Anthropic y Gemini sin exponer llaves al navegador.</p></div><div class="feature-card"><b>Bandeja</b><p>La respuesta IA se añadirá sobre la Bandeja existente con trazabilidad de quién respondió.</p></div></div></section>
+<section class="content hidden" id="page-automations"><div class="page-head"><div><div class="eyebrow">Operación automática</div><h1>Automatizaciones</h1><p>Reglas por estado, CAP, falta de respuesta y alertas.</p></div></div><div class="feature-grid"><div class="feature-card"><b>Seguimientos</b><p>Programar tareas según próxima acción y fecha CAP.</p></div><div class="feature-card"><b>Escalamiento</b><p>Pasar a llamada o seguimiento cuando el cliente no responde.</p></div><div class="feature-card"><b>Alertas</b><p>Bloqueos, vencimientos y conversaciones sin responsable.</p></div></div></section>
+<section class="content hidden" id="page-analytics"><div class="page-head"><div><div class="eyebrow">Analítica</div><h1>Analítica</h1><p>Reportes por empresa y vendedor.</p></div><button class="btn" onclick="loadDashboard()">↻ Actualizar</button></div><div class="feature-grid"><div class="feature-card"><b>Leads y conversiones</b><p>Origen, etapa, CAP y oportunidades.</p></div><div class="feature-card"><b>Ventas</b><p>Valor ganado, cotizaciones y pedidos.</p></div><div class="feature-card"><b>Operación</b><p>Tiempos de respuesta, tareas y rendimiento por vendedor.</p></div></div></section>
+<section class="content hidden" id="page-settings"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Configuración</h1><p>Canales, permisos y parámetros de la empresa activa.</p></div></div><div class="feature-grid"><div class="feature-card"><b>Canales de mensajería</b><p>Facebook Messenger e Instagram conservan la infraestructura existente. WhatsApp seguirá el onboarding multiempresa aprobado por Meta.</p><button class="btn" style="margin-top:10px" onclick="showPage('channels',null)">Ver canales</button></div><div class="feature-card"><b>Permisos</b><p>Roles y permisos por módulo se administran desde Usuarios y empresas.</p></div><div class="feature-card"><b>Auditoría</b><p>Creación de usuarios, cambios sensibles, pedidos y eliminaciones quedan registrados.</p></div></div></section>
+
+<section class="content hidden" id="page-pipeline">
   <div class="page-head"><div><div class="eyebrow">Comercial</div><h1>Pipeline de oportunidades</h1><p>Prospectos, seguimiento y cierres.</p></div><div class="actions"><button class="btn" onclick="exportCSV()">⇩ Exportar</button><button class="btn primary" onclick="openLead()">＋ Nuevo lead</button></div></div>
   <section class="stats"><div class="stat"><div class="label">Leads activos</div><div class="value" id="kTotal">0</div><div class="hint">Pipeline abierto</div></div><div class="stat"><div class="label">Nuevos</div><div class="value" id="kNew">0</div><div class="hint">Sin contactar</div></div><div class="stat"><div class="label">Calificados</div><div class="value" id="kQualified">0</div><div class="hint">Cumplen mínimos</div></div><div class="stat"><div class="label">Reuniones</div><div class="value" id="kMeetings">0</div><div class="hint">Agendadas</div></div><div class="stat"><div class="label">Ganados</div><div class="value" id="kWon">0</div><div class="hint">Cierres</div></div></section>
   <section class="workspace"><div class="toolbar"><input id="q" placeholder="Buscar en el pipeline..." oninput="syncSearch(this.value)"><select id="fService" onchange="render()"><option value="">Todos los servicios</option><option>Pauta</option><option>Integraciones</option><option>IA</option><option>Otro</option></select><select id="fSource" onchange="render()"><option value="">Todos los orígenes</option><option>Meta</option><option>WhatsApp</option><option>Referido</option><option>Web</option><option>Otro</option></select><select id="fStatus" onchange="render()"></select><div class="view-toggle"><button id="vBoard" class="active" onclick="setView('board')">▥ Kanban</button><button id="vTable" onclick="setView('table')">☷ Lista</button></div></div><div class="board-shell" id="boardShell"><section class="board" id="board"></section></div><div class="table-wrap hidden" id="tableWrap"><table class="crm-table"><thead><tr><th>Lead</th><th>Negocio</th><th>Servicio</th><th>Origen</th><th>Estado</th><th>Presupuesto</th><th>Acciones</th></tr></thead><tbody id="tableBody"></tbody></table></div></section>
 </section>
 
-<section class="content hidden" id="page-contacts"><div class="page-head"><div><div class="eyebrow">Base comercial</div><h1>Contactos</h1><p>Prospectos y clientes registrados en este navegador.</p></div><button class="btn primary" onclick="openLead()">＋ Nuevo contacto</button></div><section class="workspace"><div class="toolbar"><input id="contactQ" placeholder="Buscar contacto..." oninput="renderContacts(this.value)"></div><div class="table-wrap"><table class="crm-table"><thead><tr><th>Nombre</th><th>Negocio</th><th>Teléfono</th><th>Correo</th><th>Servicio</th><th>Origen</th><th>Acciones</th></tr></thead><tbody id="contactsBody"></tbody></table></div></section></section>
+<section class="content hidden" id="page-contacts"><div class="page-head"><div><div class="eyebrow">Base comercial</div><h1>Clientes / Contactos</h1><p>Contactos reales de la empresa activa, incluidos los que llegan desde la Bandeja.</p></div><button class="btn" onclick="loadCentralContacts()">↻ Actualizar</button></div><section class="workspace"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Canal</th><th>Negocio</th><th>Ciudad</th><th>Actualizado</th></tr></thead><tbody id="centralContactsBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div></section></section></section>
 
 <section class="content hidden" id="page-inbox">
   <div class="page-head"><div><div class="eyebrow">Conversaciones</div><h1>Bandeja de entrada</h1><p>Mensajes reales y ficha comercial del contacto en una sola vista.</p></div><button class="btn" onclick="loadInbox(false)">↻ Actualizar</button></div>
@@ -77,7 +158,7 @@
 </section>
 
 <section class="content hidden" id="page-channels"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Canales</h1><p>Conexiones de mensajería del CRM.</p></div></div><div class="channel-list"><div class="channel-card"><div class="channel-icon fb">f</div><div class="channel-body"><div class="channel-name">Facebook Messenger</div><div class="channel-desc">Página Segmenta-Marketing Digital conectada al webhook y a la Bandeja.</div></div><span class="state ok">Conectado</span></div><div class="channel-card"><div class="channel-icon ig">◎</div><div class="channel-body"><div class="channel-name">Instagram</div><div class="channel-desc">Pendiente de conexión de mensajería.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon wa">◔</div><div class="channel-body"><div class="channel-name">WhatsApp</div><div class="channel-desc">Pendiente de conexión.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon">♪</div><div class="channel-body"><div class="channel-name">TikTok</div><div class="channel-desc">Fase posterior.</div></div><span class="state wait">Próximamente</span></div></div></section>
-<section class="content hidden" id="page-integrations"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Integraciones</h1><p>Automatizaciones y fuentes de datos.</p></div></div><div class="placeholder"><h3>Meta Lead Ads</h3><p>El webhook de Lead Ads ya recibe eventos. Falta completar la lectura del detalle del formulario y persistirlo como lead para que nombre, teléfono, correo, campaña y anuncio entren automáticamente.</p></div></section>
+<section class="content hidden" id="page-integrations"><div class="page-head"><div><div class="eyebrow">Ecosistema</div><h1>Integraciones</h1><p>Conectores por empresa sin mezclar credenciales ni datos.</p></div></div><div class="feature-grid"><div class="feature-card"><b><span class="status-dot"></span>Meta</b><p>Messenger e Instagram usan el webhook existente. Lead Ads conserva su recepción actual.</p></div><div class="feature-card"><b>WhatsApp</b><p>Onboarding multiempresa mediante la plataforma oficial de Meta; no sesiones no oficiales de WhatsApp Web.</p></div><div class="feature-card"><b>Skydropx</b><p>Módulo reservado para tarifas, peso total, recaudo, guía y seguimiento. Requiere portar la integración existente de Wired.</p></div><div class="feature-card"><b>OpenAI / Anthropic / Gemini</b><p>Proveedores del agente IA configurables por backend.</p></div><div class="feature-card"><b>Wired</b><p>Entrada futura de contactos, clientes, cotizaciones, pedidos y guías desde la tienda pública.</p></div><div class="feature-card"><b>Webhooks</b><p>Base multiempresa preparada para eventos externos con trazabilidad.</p></div></div></section>
 <section class="content hidden" id="page-reports"><div class="page-head"><div><div class="eyebrow">Resultados</div><h1>Reportes</h1><p>Métricas comerciales y adquisición.</p></div></div><div class="placeholder"><h3>Reportes en construcción</h3><p>Se conectarán a la base persistente del CRM.</p></div></section>
 <section class="content hidden" id="page-admin">
   <div class="page-head"><div><div class="eyebrow">Administración</div><h1>Empresas y usuarios</h1><p>Crea espacios separados por empresa y asigna accesos al CRM.</p></div><button class="btn" onclick="loadAdmin()">↻ Actualizar</button></div>
