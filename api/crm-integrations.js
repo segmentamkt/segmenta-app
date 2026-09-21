@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { verifySession, isPlatformAdmin } = require('./_crm-session');
+const { verifySession, canManageIntegrations } = require('./_crm-session');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -31,10 +31,6 @@ async function orgForSession(session) {
   if (!session?.organization_id) return null;
   const rows = await sb(`crm_organizations?id=eq.${encodeURIComponent(session.organization_id)}&status=eq.active&select=id,name,slug&limit=1`);
   return rows?.[0] || null;
-}
-
-function canManage(session) {
-  return isPlatformAdmin(session) || session?.role === 'admin';
 }
 
 function signState(data) {
@@ -70,6 +66,7 @@ module.exports = async function handler(req, res) {
   try {
     const org = await orgForSession(session);
     if (!org) return res.status(403).json({ ok: false, error: 'No active organization in session' });
+    if (!canManageIntegrations(session)) return res.status(403).json({ ok: false, error: 'Solo el dueño de la empresa o el Host pueden gestionar integraciones' });
 
     if (req.method === 'GET') {
       const [integrations, channels] = await Promise.all([
@@ -91,8 +88,6 @@ module.exports = async function handler(req, res) {
         }
       });
     }
-
-    if (!canManage(session)) return res.status(403).json({ ok: false, error: 'Solo administradores pueden gestionar integraciones' });
 
     if (req.method === 'POST') {
       const action = String(req.body?.action || '').trim();
