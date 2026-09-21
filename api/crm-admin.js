@@ -88,7 +88,7 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       if (!canManageUsers(session)) return res.status(403).json({ ok: false, error: 'No tienes permiso para administrar usuarios' });
-      const orgFilter = isPlatformAdmin(session) ? '' : `&id=eq.${encodeURIComponent(session.organization_id || '')}`;
+      const orgFilter = session.organization_id ? `&id=eq.${encodeURIComponent(session.organization_id)}` : '&id=eq.00000000-0000-0000-0000-000000000000';
       const organizations = await sb(`crm_organizations?status=eq.active${orgFilter}&select=id,name,slug,status,created_at&order=name.asc`);
       const allowedIds = (organizations || []).map(x => x.id);
       let memberships = [];
