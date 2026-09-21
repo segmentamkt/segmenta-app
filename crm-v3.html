@@ -210,6 +210,20 @@
 <div class="drawer-backdrop" id="drawerBg" onclick="closeDrawer()"></div>
 <aside class="drawer" id="drawer"><div class="drawer-head"><div><div class="drawer-title" id="drawerTitle">Nuevo lead</div><div class="drawer-sub" id="drawerSub">Completa la información comercial</div></div><button class="icon-btn" onclick="closeDrawer()">×</button></div><div class="drawer-body"><div class="grid"><div class="field"><label>Nombre</label><input id="name"></div><div class="field"><label>Negocio</label><input id="business"></div><div class="field"><label>Teléfono</label><input id="phone"></div><div class="field"><label>Correo</label><input id="email" type="email"></div><div class="field"><label>Servicio</label><select id="service"><option>Pauta</option><option>Integraciones</option><option>IA</option><option>Otro</option></select></div><div class="field"><label>Objetivo</label><select id="goal"><option>Ventas</option><option>Leads</option><option>Otro</option></select></div><div class="field"><label>Presupuesto</label><input id="budget"></div><div class="field"><label>Origen</label><select id="source"><option>Meta</option><option>WhatsApp</option><option>Referido</option><option>Web</option><option>Otro</option></select></div><div class="field"><label>Estado</label><select id="status"></select></div><div class="field"><label>Próxima acción</label><input id="nextAction" type="date"></div><div class="field full"><label>Campaña</label><input id="campaign"></div><div class="field"><label>Conjunto</label><input id="adset"></div><div class="field"><label>Anuncio</label><input id="ad"></div><div class="field full"><label>Notas</label><textarea id="notes"></textarea></div></div></div><div class="drawer-foot"><button class="btn danger" id="deleteBtn" onclick="deleteLead()">🗑 Eliminar lead</button><div class="actions"><button class="btn" onclick="closeDrawer()">Cancelar</button><button class="btn primary" onclick="saveLead()">Guardar</button></div></div></aside>
 
+<div class="modal-backdrop hidden" id="userPermissionsModal"><form class="login-card" onsubmit="saveUserPermissions(event)"><h2>Permisos del usuario</h2><p id="editUserLabel">Define los módulos visibles dentro de este CRM.</p><input type="hidden" id="editMembershipId"><div class="field"><label>Rol base</label><select id="editUserRole" onchange="syncEditPermissionChecksFromRole()"><option value="admin">Administrador</option><option value="sales">Ventas</option><option value="inventory">Inventario / Bodega</option><option value="editor">Editor</option><option value="viewer">Solo lectura</option></select></div><div class="field"><label>Módulos habilitados</label><div class="permission-grid" id="editPermissionChecks">
+<label><input type="checkbox" data-edit-permission-module="dashboard"> Dashboard</label>
+<label><input type="checkbox" data-edit-permission-module="inbox"> Bandeja</label>
+<label><input type="checkbox" data-edit-permission-module="crm"> CRM</label>
+<label><input type="checkbox" data-edit-permission-module="cap"> Pipeline / CAP</label>
+<label><input type="checkbox" data-edit-permission-module="quotes"> Cotizaciones</label>
+<label><input type="checkbox" data-edit-permission-module="orders"> Pedidos</label>
+<label><input type="checkbox" data-edit-permission-module="contacts"> Contactos</label>
+<label><input type="checkbox" data-edit-permission-module="tasks"> Tareas</label>
+<label><input type="checkbox" data-edit-permission-module="ai"> Agente IA</label>
+<label><input type="checkbox" data-edit-permission-module="automations"> Automatizaciones</label>
+<label><input type="checkbox" data-edit-permission-module="analytics"> Analítica</label>
+<label><input type="checkbox" data-edit-permission-module="settings"> Configuración</label>
+</div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" type="button" onclick="closeUserPermissions()">Cancelar</button><button class="btn primary" type="submit">Guardar permisos</button></div></form></div>
 <div class="modal-backdrop hidden" id="crmLoginModal"><form class="login-card" onsubmit="loginInbox(event)"><h2>Acceso al CRM</h2><p>Inicia sesión con el usuario asignado a tu empresa.</p><div class="field"><label>Correo</label><input id="crmLoginEmail" type="email" autocomplete="username" required placeholder="correo@empresa.com"></div><div class="field"><label>Contraseña</label><input id="crmLoginPassword" type="password" autocomplete="current-password" required></div><div class="login-error hidden" id="crmLoginError">Credenciales inválidas o usuario sin empresa asignada.</div><div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" type="submit">Entrar al CRM</button></div></form></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -239,7 +253,7 @@ function saveLead(){const data={};leadFields.forEach(k=>data[k]=document.getElem
 function deleteLead(){if(editing)deleteLeadById(editing,true)}
 function deleteLeadById(id,close=false){const x=leads.find(a=>a.id===id);if(!x)return;if(!confirm(`¿Eliminar definitivamente a ${x.name||x.business||'este lead'}?`))return;leads=leads.filter(a=>a.id!==id);persist();if(close)closeDrawer();render();toast('Lead eliminado')}
 function exportCSV(){const cols=leadFields;const csv=[cols.join(','),...leads.map(x=>cols.map(k=>'"'+String(x[k]||'').replace(/"/g,'""')+'"').join(','))].join('\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='segmenta-leads.csv';a.click();URL.revokeObjectURL(u)}
-function showPage(page,btn){currentPage=page;document.querySelectorAll('.content').forEach(x=>x.classList.add('hidden'));document.querySelectorAll('.nav-item[data-page]').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');else{const nb=document.querySelector('.nav-item[data-page="'+page+'"]');if(nb)nb.classList.add('active')}const el=document.getElementById('page-'+page);if(el)el.classList.remove('hidden');document.getElementById('globalSearch').classList.toggle('hidden',!['pipeline'].includes(page));const labels={dashboard:'Dashboard',inbox:'Bandeja',crm:'CRM',cap:'Pipeline / CAP',quotes:'Cotizaciones',orders:'Pedidos',contacts:'Clientes / Contactos',tasks:'Tareas',ai:'Agente IA',automations:'Automatizaciones',analytics:'Analítica',integrations:'Integraciones',admin:'Usuarios y empresas',settings:'Configuración',channels:'Canales'};document.getElementById('crumbTitle').textContent=labels[page]||page;document.getElementById('sidebar').classList.remove('open');loadCurrentModule()}
+function showPage(page,btn){const pageToModule={dashboard:'dashboard',inbox:'inbox',crm:'crm',cap:'cap',quotes:'quotes',orders:'orders',contacts:'contacts',tasks:'tasks',ai:'ai',automations:'automations',analytics:'analytics',integrations:'integrations',admin:'users',settings:'settings',channels:'settings'};const mod=pageToModule[page];if(crmSession&&mod&&!moduleAllowed(mod)){toast('No tienes acceso a este módulo');return}currentPage=page;document.querySelectorAll('.content').forEach(x=>x.classList.add('hidden'));document.querySelectorAll('.nav-item[data-page]').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');else{const nb=document.querySelector('.nav-item[data-page="'+page+'"]');if(nb)nb.classList.add('active')}const el=document.getElementById('page-'+page);if(el)el.classList.remove('hidden');document.getElementById('globalSearch').classList.toggle('hidden',!['pipeline'].includes(page));const labels={dashboard:'Dashboard',inbox:'Bandeja',crm:'CRM',cap:'Pipeline / CAP',quotes:'Cotizaciones',orders:'Pedidos',contacts:'Clientes / Contactos',tasks:'Tareas',ai:'Agente IA',automations:'Automatizaciones',analytics:'Analítica',integrations:'Integraciones',admin:'Usuarios y empresas',settings:'Configuración',channels:'Canales'};document.getElementById('crumbTitle').textContent=labels[page]||page;document.getElementById('sidebar').classList.remove('open');loadCurrentModule()}
 function refreshCurrentPage(){loadCurrentModule(true)}
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
 function contactLabel(c){const name=c.contact?.display_name?.trim();if(name)return name;const id=c.contact?.external_user_id||'';return `Contacto${id?' · '+id.slice(-6):''}`}
@@ -250,9 +264,15 @@ function avatarMarkup(contact,name){const pic=profilePic(contact);return pic?`<i
 async function ensureInboxAuth(){return ensureCrmAuth(true)}
 async function ensureCrmAuth(loadInboxAfter=false){
   try{
-    const r=await fetch('/api/crm-auth',{cache:'no-store'}),j=await r.json();
+    let r=await fetch('/api/crm-auth',{cache:'no-store'}),j=await r.json();
     inboxAuthenticated=!!j.authenticated;
     if(!inboxAuthenticated){crmSession=null;document.getElementById('crmLoginModal').classList.remove('hidden');return false}
+    const wanted=requestedWorkspace();
+    if(wanted&&j.organization?.slug!==wanted){
+      const sw=await fetch('/api/crm-auth',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({org_slug:wanted})});
+      if(!sw.ok){document.getElementById('crmLoginError').textContent='Este usuario no tiene acceso a este CRM.';document.getElementById('crmLoginError').classList.remove('hidden');document.getElementById('crmLoginModal').classList.remove('hidden');return false}
+      r=await fetch('/api/crm-auth',{cache:'no-store'});j=await r.json();
+    }
     crmSession=j;
     document.getElementById('crmLoginModal').classList.add('hidden');
     currentOrgSlug=j.organization?.slug||currentOrgSlug||'segmenta';
@@ -264,39 +284,25 @@ async function ensureCrmAuth(loadInboxAfter=false){
     return true
   }catch(_){document.getElementById('crmLoginModal').classList.remove('hidden');return false}
 }
+function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||''}
 function renderCrmSession(){
-  const orgs=crmSession?.organizations||[];
-  const sw=document.getElementById('orgSwitcher');
-  if(sw){
-    sw.innerHTML=orgs.map(o=>`<option value="${esc(o.slug)}"${o.slug===currentOrgSlug?' selected':''}>${esc(o.name)}</option>`).join('');
-    sw.disabled=orgs.length<=1;
-  }
   const email=crmSession?.email||'CRM';
+  document.getElementById('orgContextName').textContent=crmSession?.organization?.name||'CRM';
+  document.getElementById('hostBackLink').classList.toggle('hidden',!crmSession?.platform_admin);
   document.getElementById('profileName').textContent=crmSession?.organization?.name||'CRM';
-  document.getElementById('profileRole').textContent=(crmSession?.platform_admin?'Segmenta · ':'')+roleLabel(crmSession?.role);
+  document.getElementById('profileRole').textContent=(crmSession?.platform_admin?'Host · ':'')+roleLabel(crmSession?.role);
   document.getElementById('profileAvatar').textContent=(crmSession?.organization?.name||email||'S').charAt(0).toUpperCase();
-  const orgForm=document.getElementById('orgCreateForm');if(orgForm)orgForm.classList.toggle('hidden',!crmSession?.platform_admin);
+  applyNavigationPermissions();
 }
 async function loginInbox(e){
   e.preventDefault();const err=document.getElementById('crmLoginError');err.classList.add('hidden');
   try{
-    const r=await fetch('/api/crm-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('crmLoginEmail').value.trim(),password:document.getElementById('crmLoginPassword').value})});
+    const r=await fetch('/api/crm-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('crmLoginEmail').value.trim(),password:document.getElementById('crmLoginPassword').value,workspace:requestedWorkspace()||undefined})});
     if(!r.ok){err.classList.remove('hidden');return}
     document.getElementById('crmLoginPassword').value='';
     await ensureCrmAuth(currentPage==='inbox');
     if(currentPage==='admin')await loadAdmin();
   }catch(_){err.classList.remove('hidden')}
-}
-async function switchOrganization(slug){
-  if(!slug||slug===currentOrgSlug)return;
-  try{
-    const r=await fetch('/api/crm-auth',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({org_slug:slug})});
-    if(!r.ok)throw new Error();
-    currentOrgSlug=slug;activeConversationId=null;activeConversationData=null;inboxConversations=[];
-    await ensureCrmAuth(currentPage==='inbox');
-    await loadCurrentModule(true);
-    toast('Empresa cambiada');
-  }catch(_){toast('No fue posible cambiar de empresa');renderCrmSession()}
 }
 async function logoutCrm(){
   try{await fetch('/api/crm-auth',{method:'DELETE'})}catch(_){}
@@ -361,7 +367,29 @@ async function disconnectMetaBusiness(){
     toast('Portafolio desconectado');await loadIntegrations();
   }catch(err){toast(err.message||'No fue posible desconectar')}
 }
-function roleLabel(role){return ({admin:'Administrador',sales:'Ventas',inventory:'Inventario / Bodega',editor:'Editor',viewer:'Solo lectura',agent:'Ventas'})[role]||'Usuario'}
+const ROLE_MODULE_DEFAULTS={owner:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','integrations','users','settings'],admin:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','settings'],sales:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],agent:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],inventory:['dashboard','orders','contacts','tasks'],editor:['dashboard','crm','quotes','contacts','tasks'],viewer:['dashboard']};
+function roleLabel(role){return ({owner:'Dueño',admin:'Administrador',sales:'Ventas',inventory:'Inventario / Bodega',editor:'Editor',viewer:'Solo lectura',agent:'Ventas'})[role]||'Usuario'}
+function moduleAllowed(module){
+  if(crmSession?.platform_admin||crmSession?.role==='owner')return true;
+  if(module==='integrations')return false;
+  if(module==='users')return crmSession?.permissions?.actions?.users?.manage===true;
+  const explicit=crmSession?.permissions?.modules?.[module];
+  if(typeof explicit==='boolean')return explicit;
+  return (ROLE_MODULE_DEFAULTS[crmSession?.role]||[]).includes(module);
+}
+function applyNavigationPermissions(){
+  const pageToModule={dashboard:'dashboard',inbox:'inbox',crm:'crm',cap:'cap',quotes:'quotes',orders:'orders',contacts:'contacts',tasks:'tasks',ai:'ai',automations:'automations',analytics:'analytics',integrations:'integrations',admin:'users',settings:'settings'};
+  document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{const mod=pageToModule[btn.dataset.page];btn.classList.toggle('hidden',mod&&!moduleAllowed(mod))});
+  const currentModule=pageToModule[currentPage];
+  if(currentModule&&!moduleAllowed(currentModule)){
+    const next=document.querySelector('.nav-item[data-page]:not(.hidden)');
+    if(next)showPage(next.dataset.page,next);
+  }
+}
+function permissionsForRole(role){const set=new Set(ROLE_MODULE_DEFAULTS[role]||[]);const modules={};['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','settings'].forEach(m=>modules[m]=set.has(m));return modules}
+function collectPermissions(prefix=''){const attr=prefix?'data-edit-permission-module':'data-permission-module';const modules={};document.querySelectorAll('['+attr+']').forEach(x=>modules[x.getAttribute(attr)]=x.checked);return {modules}}
+function syncPermissionChecksFromRole(){const mods=permissionsForRole(document.getElementById('newUserRole').value);document.querySelectorAll('[data-permission-module]').forEach(x=>x.checked=!!mods[x.dataset.permissionModule])}
+function syncEditPermissionChecksFromRole(){const mods=permissionsForRole(document.getElementById('editUserRole').value);document.querySelectorAll('[data-edit-permission-module]').forEach(x=>x.checked=!!mods[x.dataset.editPermissionModule])}
 function money(v){return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0)}
 function dateTime(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(_){return '—'}}
 async function commercialGet(type){const r=await fetch('/api/crm-commercial?type='+encodeURIComponent(type),{cache:'no-store'});if(r.status===401){await ensureCrmAuth(false);throw new Error('Sesión requerida')}const j=await r.json();if(!r.ok)throw new Error(j.error||'Error');return j}
@@ -394,28 +422,18 @@ async function completeTask(id){try{await commercialSend('PATCH',{action:'update
 async function loadAdmin(){
   if(!crmSession){const ok=await ensureCrmAuth(false);if(!ok)return}
   try{
-    const r=await fetch('/api/crm-admin',{cache:'no-store'});
+    const r=await fetch('/api/crm-admin',{cache:'no-store'}),j=await r.json();
     if(r.status===401){await ensureCrmAuth(false);return}
-    if(!r.ok)throw new Error();
-    const j=await r.json();adminOrganizations=j.organizations||[];adminMemberships=j.memberships||[];
-    const orgMap=Object.fromEntries(adminOrganizations.map(o=>[o.id,o]));
-    document.getElementById('orgAdminBody').innerHTML=adminOrganizations.length?adminOrganizations.map(o=>`<tr><td><b>${esc(o.name)}</b></td><td>${esc(o.slug)}</td><td><span class="role-pill">${esc(o.status)}</span></td></tr>`).join(''):'<tr><td colspan="3">Sin empresas.</td></tr>';
-    document.getElementById('newUserOrg').innerHTML=adminOrganizations.map(o=>`<option value="${esc(o.id)}"${o.slug===currentOrgSlug?' selected':''}>${esc(o.name)}</option>`).join('');
-    document.getElementById('userAdminBody').innerHTML=adminMemberships.length?adminMemberships.map(m=>`<tr><td><b>${esc(m.display_name||m.email)}</b><br><span style="color:var(--muted)">${esc(m.email)}</span></td><td>${esc(orgMap[m.organization_id]?.name||'—')}</td><td><span class="role-pill">${roleLabel(m.role)}</span></td><td>${esc(m.status)}</td></tr>`).join(''):'<tr><td colspan="4">Sin usuarios creados.</td></tr>';
-    const form=document.getElementById('orgCreateForm');if(form)form.classList.toggle('hidden',!j.platform_admin);
-  }catch(_){toast('No fue posible cargar empresas y usuarios')}
-}
-async function createOrganization(e){
-  e.preventDefault();const name=document.getElementById('newOrgName').value.trim();if(!name)return;
-  try{
-    const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_org',name})});
-    const j=await r.json();if(!r.ok)throw new Error(j.error||'Error');
-    document.getElementById('newOrgName').value='';toast('Empresa creada');await ensureCrmAuth(false);await loadAdmin();
-  }catch(err){toast(err.message||'No fue posible crear la empresa')}
+    if(!r.ok)throw new Error(j.error||'No tienes permiso para administrar usuarios');
+    adminOrganizations=j.organizations||[];adminMemberships=j.memberships||[];
+    const body=document.getElementById('userAdminBody');
+    body.innerHTML=adminMemberships.length?adminMemberships.map(m=>{const mods=m.permissions?.modules||permissionsForRole(m.role);const names=Object.entries(mods).filter(([,v])=>v).map(([k])=>({dashboard:'Dashboard',inbox:'Bandeja',crm:'CRM',cap:'CAP',quotes:'Cotizaciones',orders:'Pedidos',contacts:'Contactos',tasks:'Tareas',ai:'IA',automations:'Automatizaciones',analytics:'Analítica',settings:'Configuración'})[k]||k);const action=m.role==='owner'?'<span class="role-pill">Acceso principal</span>':'<button class="btn" onclick="openUserPermissions(\''+m.id+'\')">Permisos</button>';return '<tr><td><b>'+esc(m.display_name||m.email)+'</b><br><span style="color:var(--muted)">'+esc(m.email)+'</span></td><td><span class="role-pill">'+roleLabel(m.role)+'</span></td><td>'+esc(names.join(', ')||'Sin módulos')+'</td><td>'+esc(m.status)+'</td><td>'+action+'</td></tr>'}).join(''):'<tr><td colspan="5">Sin usuarios creados.</td></tr>';
+    syncPermissionChecksFromRole();
+  }catch(err){toast(err.message||'No fue posible cargar usuarios')}
 }
 async function createCrmUser(e){
   e.preventDefault();
-  const body={action:'create_user',organization_id:document.getElementById('newUserOrg').value,display_name:document.getElementById('newUserName').value.trim(),email:document.getElementById('newUserEmail').value.trim(),password:document.getElementById('newUserPassword').value,role:document.getElementById('newUserRole').value};
+  const body={action:'create_user',organization_id:crmSession?.organization?.id,display_name:document.getElementById('newUserName').value.trim(),email:document.getElementById('newUserEmail').value.trim(),password:document.getElementById('newUserPassword').value,role:document.getElementById('newUserRole').value,permissions:collectPermissions()};
   try{
     const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
@@ -423,8 +441,24 @@ async function createCrmUser(e){
     toast('Usuario creado');await loadAdmin();
   }catch(err){toast(err.message||'No fue posible crear el usuario')}
 }
+function openUserPermissions(id){
+  const m=adminMemberships.find(x=>x.id===id);if(!m)return;
+  document.getElementById('editMembershipId').value=m.id;document.getElementById('editUserLabel').textContent=(m.display_name||m.email)+' · '+m.email;document.getElementById('editUserRole').value=m.role==='agent'?'sales':m.role;
+  const mods=m.permissions?.modules&&Object.keys(m.permissions.modules).length?m.permissions.modules:permissionsForRole(m.role);
+  document.querySelectorAll('[data-edit-permission-module]').forEach(x=>x.checked=!!mods[x.dataset.editPermissionModule]);
+  document.getElementById('userPermissionsModal').classList.remove('hidden');
+}
+function closeUserPermissions(){document.getElementById('userPermissionsModal').classList.add('hidden')}
+async function saveUserPermissions(e){
+  e.preventDefault();const id=document.getElementById('editMembershipId').value;
+  try{
+    const r=await fetch('/api/crm-admin',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update_membership',membership_id:id,role:document.getElementById('editUserRole').value,permissions:collectPermissions('edit')})}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'No fue posible guardar');
+    closeUserPermissions();toast('Permisos actualizados');await loadAdmin();
+  }catch(err){toast(err.message)}
+}
 function closeMobileChat(){document.getElementById('chatPane').classList.add('mobile-hidden');activeConversationId=null;activeConversationData=null;renderConversationList()}
-fillStatus();render();ensureCrmAuth(false);
+fillStatus();render();syncPermissionChecksFromRole();ensureCrmAuth(false);
 </script>
 </body>
 </html>
