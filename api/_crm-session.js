@@ -57,4 +57,60 @@ function isPlatformAdmin(session) {
   return session?.platform_role === 'super_admin';
 }
 
-module.exports = { COOKIE_NAME, SESSION_SECONDS, verifySession, setSession, clearSession, isPlatformAdmin };
+const ALL_MODULES = ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','integrations','users','settings'];
+
+const ROLE_MODULES = {
+  owner: ALL_MODULES,
+  admin: ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','settings'],
+  sales: ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],
+  agent: ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],
+  inventory: ['dashboard','orders','contacts','tasks'],
+  editor: ['dashboard','crm','quotes','contacts','tasks'],
+  viewer: ['dashboard']
+};
+
+function isOrgOwner(session) {
+  return session?.role === 'owner';
+}
+
+function hasModuleAccess(session, module, action = 'read') {
+  if (isPlatformAdmin(session) || isOrgOwner(session)) return true;
+
+  const explicit = session?.permissions?.modules?.[module];
+  if (typeof explicit === 'boolean') return explicit;
+  if (explicit && typeof explicit === 'object' && typeof explicit[action] === 'boolean') return explicit[action];
+
+  const roleModules = ROLE_MODULES[session?.role] || [];
+  if (!roleModules.includes(module)) return false;
+
+  if (action === 'read') return true;
+  if (session?.role === 'viewer') return false;
+
+  const explicitAction = session?.permissions?.actions?.[module]?.[action];
+  if (typeof explicitAction === 'boolean') return explicitAction;
+
+  return true;
+}
+
+function canManageUsers(session) {
+  if (isPlatformAdmin(session) || isOrgOwner(session)) return true;
+  return session?.permissions?.actions?.users?.manage === true;
+}
+
+function canManageIntegrations(session) {
+  return isPlatformAdmin(session) || isOrgOwner(session);
+}
+
+module.exports = {
+  COOKIE_NAME,
+  SESSION_SECONDS,
+  verifySession,
+  setSession,
+  clearSession,
+  isPlatformAdmin,
+  isOrgOwner,
+  hasModuleAccess,
+  canManageUsers,
+  canManageIntegrations,
+  ALL_MODULES
+};
