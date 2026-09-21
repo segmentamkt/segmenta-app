@@ -1,35 +1,10 @@
-const crypto = require('crypto');
+const { verifySession, isPlatformAdmin } = require('./_crm-session');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const META_PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN || '';
 const META_INSTAGRAM_ACCESS_TOKEN = process.env.META_INSTAGRAM_ACCESS_TOKEN || '';
 const META_GRAPH_VERSION = 'v26.0';
-const COOKIE_NAME = 'segmenta_crm_session';
-const EXPECTED_EMAIL = 'host@segmenta.co';
-
-function readCookie(req, name) {
-  const raw = req.headers.cookie || '';
-  for (const part of raw.split(';')) {
-    const [k, ...rest] = part.trim().split('=');
-    if (k === name) return decodeURIComponent(rest.join('='));
-  }
-  return null;
-}
-
-function verifySession(req) {
-  const token = readCookie(req, COOKIE_NAME);
-  if (!token || !SUPABASE_SERVICE_ROLE_KEY) return false;
-  const [payload, signature] = token.split('.');
-  if (!payload || !signature) return false;
-  const expected = crypto.createHmac('sha256', SUPABASE_SERVICE_ROLE_KEY).update(payload).digest('hex');
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
-  let decoded;
-  try { decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch (_) { return false; }
-  return decoded?.email === EXPECTED_EMAIL && Number(decoded?.exp || 0) > Date.now();
-}
 
 async function sb(path, options = {}) {
   if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase service key not configured');
@@ -224,10 +199,20 @@ function safeMetadataPatch(input) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  if (!verifySession(req)) return res.status(401).json({ ok: false, error: 'CRM session required' });
+  const session = verifySession(req);
+  if (!session) return res.status(401).json({ ok: false, error: 'CRM session required' });
 
   try {
-    const orgSlug = String(req.query?.org || req.body?.org || 'segmenta').trim().toLowerCase();
+    const requestedOrg = String(req.query?.org || req.body?.org || '').trim().toLowerCase();
+    const orgSlug = isPlatformAdmin(session)
+      ? (requestedOrg || session.organization_slug || 'segmenta')
+      : session.organization_slug;
+
+    if (!orgSlug) return res.status(403).json({ ok: false, error: 'No active organization in session' });
+    if (!isPlatformAdmin(session) && requestedOrg && requestedOrg !== orgSlug) {
+      return res.status(403).json({ ok: false, error: 'No tienes acceso a esa empresa' });
+    }
+
     const organization = await getOrganization(orgSlug);
     if (!organization) return res.status(404).json({ ok: false, error: 'Organization not found' });
 
@@ -245,6 +230,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
+      if (session.role === 'viewer') return res.status(403).json({ ok: false, error: 'Acceso de solo lectura' });
       const conversationId = String(req.body?.conversation_id || '').trim();
       if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
       const conversation = await getScopedConversation(conversationId, organization.id);
@@ -270,6 +256,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      if (session.role === 'viewer') return res.status(403).json({ ok: false, error: 'Acceso de solo lectura' });
       const conversationId = String(req.query?.conversation_id || '').trim();
       if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
       const conversation = await getScopedConversation(conversationId, organization.id);
