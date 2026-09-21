@@ -7,7 +7,7 @@ const META_APP_ID = process.env.META_APP_ID || '1069309302411448';
 const META_LOGIN_CONFIG_ID = process.env.META_LOGIN_CONFIG_ID || '';
 const META_APP_SECRET = process.env.META_APP_SECRET || '';
 const META_GRAPH_VERSION = 'v26.0';
-const APP_ORIGIN = process.env.CRM_PUBLIC_ORIGIN || 'https://segmenta-app.vercel.app';
+const APP_ORIGIN = process.env.CRM_PUBLIC_ORIGIN || 'https://www.segmenta.online';
 
 async function sb(path, options = {}) {
   if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase service key not configured');
