@@ -1,4 +1,4 @@
-const { verifySession, isPlatformAdmin } = require('./_crm-session');
+const { verifySession, isPlatformAdmin, hasModuleAccess } = require('./_crm-session');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -201,6 +201,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const session = verifySession(req);
   if (!session) return res.status(401).json({ ok: false, error: 'CRM session required' });
+  if (!hasModuleAccess(session, 'inbox', 'read')) return res.status(403).json({ ok: false, error: 'No tienes acceso a la Bandeja' });
 
   try {
     const requestedOrg = String(req.query?.org || req.body?.org || '').trim().toLowerCase();
@@ -230,7 +231,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      if (session.role === 'viewer') return res.status(403).json({ ok: false, error: 'Acceso de solo lectura' });
+      if (!hasModuleAccess(session, 'contacts', 'edit')) return res.status(403).json({ ok: false, error: 'No tienes permiso para editar contactos' });
       const conversationId = String(req.body?.conversation_id || '').trim();
       if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
       const conversation = await getScopedConversation(conversationId, organization.id);
@@ -256,7 +257,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      if (session.role === 'viewer') return res.status(403).json({ ok: false, error: 'Acceso de solo lectura' });
+      if (!hasModuleAccess(session, 'contacts', 'delete')) return res.status(403).json({ ok: false, error: 'No tienes permiso para eliminar contactos' });
       const conversationId = String(req.query?.conversation_id || '').trim();
       if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
       const conversation = await getScopedConversation(conversationId, organization.id);
