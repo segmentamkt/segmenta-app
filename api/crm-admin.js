@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
       const rows = await sb('crm_organizations', {
         method: 'POST',
         headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({ name, slug, status: 'active' })
+        body: JSON.stringify({ name, slug, status: 'active', crm_path: `/crm?workspace=${slug}` })
       });
       const organization = rows?.[0] || null;
       if (organization) await audit(session, organization.id, 'organization.created', 'organization', organization.id, null, organization);
