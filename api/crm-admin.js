@@ -1,4 +1,4 @@
-const { verifySession, isPlatformAdmin } = require('./_crm-session');
+const { verifySession, isPlatformAdmin, canManageUsers } = require('./_crm-session');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -53,10 +53,10 @@ function slugify(value) {
 
 function canManageOrg(session, organizationId) {
   if (isPlatformAdmin(session)) return true;
-  return session?.role === 'admin' && session?.organization_id === organizationId;
+  return canManageUsers(session) && session?.organization_id === organizationId;
 }
 
-const ALLOWED_ROLES = ['admin','sales','inventory','editor','viewer','agent'];
+const ALLOWED_ROLES = ['owner','admin','sales','inventory','editor','viewer','agent'];
 
 async function audit(session, organizationId, action, entityType, entityId, beforeData = null, afterData = null, metadata = {}) {
   try {
@@ -87,6 +87,7 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      if (!canManageUsers(session)) return res.status(403).json({ ok: false, error: 'No tienes permiso para administrar usuarios' });
       const orgFilter = isPlatformAdmin(session) ? '' : `&id=eq.${encodeURIComponent(session.organization_id || '')}`;
       const organizations = await sb(`crm_organizations?status=eq.active${orgFilter}&select=id,name,slug,status,created_at&order=name.asc`);
       const allowedIds = (organizations || []).map(x => x.id);
@@ -127,6 +128,7 @@ module.exports = async function handler(req, res) {
       const password = String(req.body?.password || '');
       const displayName = String(req.body?.display_name || '').trim();
       const role = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : 'sales';
+      if (role === 'owner' && !isPlatformAdmin(session)) return res.status(403).json({ ok: false, error: 'Solo el Host puede asignar el dueño de una empresa' });
       const permissions = req.body?.permissions && typeof req.body.permissions === 'object' ? req.body.permissions : {};
       if (!email || !email.includes('@')) return res.status(400).json({ ok: false, error: 'Correo inválido' });
       if (password.length < 8) return res.status(400).json({ ok: false, error: 'La contraseña debe tener mínimo 8 caracteres' });
@@ -169,13 +171,17 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'PATCH' && action === 'update_membership') {
+      if (!canManageUsers(session)) return res.status(403).json({ ok: false, error: 'No tienes permiso para administrar usuarios' });
       const membershipId = String(req.body?.membership_id || '').trim();
       if (!membershipId) return res.status(400).json({ ok: false, error: 'membership_id requerido' });
       const found = await sb(`crm_memberships?id=eq.${encodeURIComponent(membershipId)}&select=*&limit=1`);
       const membership = found?.[0];
       if (!membership || !canManageOrg(session, membership.organization_id)) return res.status(403).json({ ok: false, error: 'No autorizado' });
       const patch = { updated_at: new Date().toISOString() };
-      if (ALLOWED_ROLES.includes(req.body?.role)) patch.role = req.body.role;
+      if (ALLOWED_ROLES.includes(req.body?.role)) {
+        if (req.body.role === 'owner' && !isPlatformAdmin(session)) return res.status(403).json({ ok: false, error: 'Solo el Host puede asignar el dueño de una empresa' });
+        patch.role = req.body.role;
+      }
       if (['active','disabled'].includes(req.body?.status)) patch.status = req.body.status;
       if (req.body?.permissions && typeof req.body.permissions === 'object') patch.permissions = req.body.permissions;
       const rows = await sb(`crm_memberships?id=eq.${encodeURIComponent(membershipId)}`, {
