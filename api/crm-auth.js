@@ -81,8 +81,25 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const session = verifySession(req);
+      let session = verifySession(req);
       if (!session) return res.status(200).json({ ok: true, authenticated: false, organizations: [] });
+
+      // Upgrade cookies created by the previous single-admin CRM without forcing a logout.
+      if (session.email === EXPECTED_EMAIL && !session.sub && !session.platform_role) {
+        const legacyOrg = await getOrgBySlug('segmenta');
+        if (legacyOrg) {
+          session = setSession(res, {
+            sub: 'legacy-superadmin',
+            email: EXPECTED_EMAIL,
+            platform_role: 'super_admin',
+            role: 'admin',
+            organization_id: legacyOrg.id,
+            organization_slug: legacyOrg.slug,
+            organization_name: legacyOrg.name
+          });
+        }
+      }
+
       const organizations = await organizationsForSession(session);
       return res.status(200).json({
         ok: true,
