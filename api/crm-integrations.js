@@ -157,6 +157,7 @@ module.exports = async function handler(req, res) {
           headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({
             status: 'disconnected',
+            credential_encrypted: null,
             last_error: null,
             metadata: { ...(integration.metadata || {}), disconnected_at: new Date().toISOString() },
             updated_at: new Date().toISOString()
