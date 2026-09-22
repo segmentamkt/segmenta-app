@@ -131,7 +131,7 @@ module.exports = async function handler(req, res) {
       }
 
       if (type === 'contacts') {
-        const rows = await sb(`crm_contacts?organization_id=eq.${orgId}&select=id,display_name,phone,email,metadata,created_at,updated_at,channel:crm_channels(id,channel_type,external_account_name)&order=updated_at.desc`);
+        const rows = await sb(`crm_contacts?organization_id=eq.${orgId}&is_test=eq.false&select=id,display_name,phone,email,metadata,created_at,updated_at,channel:crm_channels(id,channel_type,external_account_name)&order=updated_at.desc`);
         return res.status(200).json({ ok: true, contacts: rows || [] });
       }
 
