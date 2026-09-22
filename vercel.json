@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/crm", "destination": "/crm-v3.html" },
+    { "source": "/crm", "destination": "/api/crm-page" },
     { "source": "/host", "destination": "/host-crm.html" }
   ]
 }
