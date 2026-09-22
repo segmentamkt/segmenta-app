@@ -1,4 +1,5 @@
 const { verifySession, isPlatformAdmin, hasModuleAccess } = require('./_crm-session');
+const { decryptCredential } = require('./_crm-crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -42,6 +43,117 @@ function profileTokenFor(type) {
   return type === 'instagram' ? META_INSTAGRAM_ACCESS_TOKEN : META_PAGE_ACCESS_TOKEN;
 }
 
+async function graphGet(path, accessToken) {
+  if (!accessToken) return null;
+  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${String(path).replace(/^\\//,'')}`);
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.error) {
+    const error = new Error(data?.error?.message || `Meta Graph ${response.status}`);
+    error.metaCode = data?.error?.code ?? null;
+    error.metaSubcode = data?.error?.error_subcode ?? null;
+    error.metaType = data?.error?.type ?? null;
+    error.httpStatus = response.status;
+    throw error;
+  }
+  return data;
+}
+
+async function integrationTokenForChannel(channel, organizationId) {
+  let integrationId = channel?.integration_id || null;
+
+  if (!integrationId && organizationId && channel?.external_account_id) {
+    const sibling = await sb(
+      `crm_channels?organization_id=eq.${organizationId}&channel_type=eq.${encodeURIComponent(channel.channel_type)}&external_account_id=eq.${encodeURIComponent(channel.external_account_id)}&integration_id=not.is.null&select=integration_id,metadata&limit=1`
+    );
+    integrationId = sibling?.[0]?.integration_id || null;
+    if (sibling?.[0]?.metadata && !channel.metadata) channel.metadata = sibling[0].metadata;
+  }
+
+  if (!integrationId) return null;
+  const rows = await sb(
+    `crm_integrations?id=eq.${encodeURIComponent(integrationId)}&organization_id=eq.${organizationId}&status=eq.connected&select=id,credential_encrypted&limit=1`
+  );
+  const integration = rows?.[0];
+  if (!integration?.credential_encrypted) return null;
+  return decryptCredential(integration.credential_encrypted);
+}
+
+async function getPageAccessToken(pageId, integrationToken) {
+  if (!pageId || !integrationToken) return null;
+  try {
+    const page = await graphGet(`${pageId}?fields=access_token`, integrationToken);
+    if (page?.access_token) return page.access_token;
+  } catch (_) {}
+  try {
+    const accounts = await graphGet('me/accounts?fields=id,access_token&limit=100', integrationToken);
+    const page = (accounts?.data || []).find(x => String(x.id) === String(pageId));
+    return page?.access_token || null;
+  } catch (_) {}
+  return null;
+}
+
+async function resolveMetaAccessToken(channel, organizationId) {
+  const integrationToken = await integrationTokenForChannel(channel, organizationId);
+  if (integrationToken) {
+    if (channel?.channel_type === 'facebook_messenger') {
+      return await getPageAccessToken(channel.external_account_id, integrationToken) || integrationToken;
+    }
+    if (channel?.channel_type === 'instagram') {
+      const parentPageId = channel?.metadata?.parent_page_id || null;
+      if (parentPageId) {
+        const pageToken = await getPageAccessToken(parentPageId, integrationToken);
+        if (pageToken) return pageToken;
+      }
+      try {
+        const accounts = await graphGet('me/accounts?fields=id,access_token,instagram_business_account{id}&limit=100', integrationToken);
+        const page = (accounts?.data || []).find(x =>
+          String(x?.instagram_business_account?.id || '') === String(channel.external_account_id || '')
+        );
+        if (page?.access_token) return page.access_token;
+      } catch (_) {}
+      return integrationToken;
+    }
+  }
+  return profileTokenFor(channel?.channel_type);
+}
+
+async function sendMetaText(conversation, organizationId, text) {
+  const channel = conversation?.channel;
+  const contact = conversation?.contact;
+  if (!channel || !contact?.external_user_id) throw new Error('La conversación no tiene destinatario válido.');
+  if (!['facebook_messenger','instagram'].includes(channel.channel_type)) {
+    throw new Error('Este canal todavía no admite respuestas desde el CRM.');
+  }
+
+  const accessToken = await resolveMetaAccessToken(channel, organizationId);
+  if (!accessToken) throw new Error('No hay una credencial activa de Meta para responder desde este canal.');
+
+  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(channel.external_account_id)}/messages`);
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
+    },
+    body: JSON.stringify({
+      recipient: { id: contact.external_user_id },
+      message: { text }
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.error) {
+    const message = data?.error?.message || `Meta no pudo enviar el mensaje (${response.status})`;
+    const error = new Error(message);
+    error.metaCode = data?.error?.code ?? null;
+    throw error;
+  }
+  return data || {};
+}
+
 async function fetchGraphProfile(id, fields, accessToken) {
   if (!accessToken || !id) return null;
   const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(id)}`);
@@ -81,21 +193,21 @@ async function persistMetaProfileSync(contact, sync, extra = {}) {
   }
 }
 
-async function enrichContactFromMeta(contact, channel) {
+async function enrichContactFromMeta(contact, channel, organizationId) {
   if (!contact || contact.display_name) return contact;
   const type = channel?.channel_type;
   if (!['facebook_messenger', 'instagram'].includes(type)) return contact;
 
   const attemptedAt = new Date().toISOString();
-  const accessToken = profileTokenFor(type);
-  const tokenEnvName = type === 'instagram' ? 'META_INSTAGRAM_ACCESS_TOKEN' : 'META_PAGE_ACCESS_TOKEN';
+  const accessToken = await resolveMetaAccessToken(channel, organizationId);
+  const tokenEnvName = type === 'instagram' ? 'Meta Business / Instagram' : 'Meta Business / Facebook';
 
   if (!accessToken) {
     return persistMetaProfileSync(contact, {
       ok: false,
       platform: type,
       code: 'TOKEN_NOT_CONFIGURED',
-      message: `${tokenEnvName} no está disponible en este deployment de Production.`,
+      message: `${tokenEnvName} no tiene una credencial disponible para este canal.`,
       token_configured: false,
       attempted_at: attemptedAt
     });
@@ -171,14 +283,14 @@ async function enrichContactFromMeta(contact, channel) {
   }
 }
 
-async function enrichConversation(conversation) {
+async function enrichConversation(conversation, organizationId) {
   if (!conversation?.contact) return conversation;
-  const contact = await enrichContactFromMeta(conversation.contact, conversation.channel);
+  const contact = await enrichContactFromMeta(conversation.contact, conversation.channel, organizationId);
   return { ...conversation, contact };
 }
 
 async function getScopedConversation(conversationId, organizationId) {
-  const rows = await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organizationId}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id)&limit=1`);
+  const rows = await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organizationId}&select=id,organization_id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id,integration_id,status,metadata)&limit=1`);
   return rows?.[0] || null;
 }
 
@@ -218,10 +330,50 @@ module.exports = async function handler(req, res) {
     if (!organization) return res.status(404).json({ ok: false, error: 'Organization not found' });
 
     if (req.method === 'POST') {
+      const action = String(req.body?.action || 'mark_read').trim();
       const conversationId = String(req.body?.conversation_id || '').trim();
       if (!conversationId) return res.status(400).json({ ok: false, error: 'conversation_id required' });
       const conversation = await getScopedConversation(conversationId, organization.id);
       if (!conversation) return res.status(404).json({ ok: false, error: 'Conversation not found' });
+
+      if (action === 'send_message') {
+        if (!hasModuleAccess(session, 'inbox', 'edit')) {
+          return res.status(403).json({ ok: false, error: 'No tienes permiso para responder conversaciones' });
+        }
+        const text = cleanText(req.body?.text, 2000);
+        if (!text) return res.status(400).json({ ok: false, error: 'Escribe un mensaje antes de enviar.' });
+
+        const sent = await sendMetaText(conversation, organization.id, text);
+        const now = new Date().toISOString();
+        const externalMessageId = String(sent.message_id || sent.id || `crm-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
+
+        await sb('crm_messages', {
+          method: 'POST',
+          headers: { Prefer: 'return=representation,resolution=ignore-duplicates' },
+          body: JSON.stringify({
+            organization_id: organization.id,
+            channel_id: conversation.channel_id,
+            conversation_id: conversation.id,
+            contact_id: conversation.contact_id,
+            external_message_id: externalMessageId,
+            direction: 'outbound',
+            message_type: 'text',
+            text,
+            attachments: [],
+            sent_at: now,
+            raw_payload: { source: 'crm_inbox', meta_response: sent }
+          })
+        });
+
+        await sb(`crm_conversations?id=eq.${encodeURIComponent(conversation.id)}&organization_id=eq.${organization.id}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ unread_count: 0, last_message_at: now, updated_at: now })
+        });
+
+        return res.status(200).json({ ok: true, message_id: externalMessageId, meta: sent });
+      }
+
       await sb(`crm_conversations?id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
@@ -287,7 +439,7 @@ module.exports = async function handler(req, res) {
     if (conversationId) {
       let conversation = await getScopedConversation(conversationId, organization.id);
       if (!conversation) return res.status(404).json({ ok: false, error: 'Conversation not found' });
-      conversation = await enrichConversation(conversation);
+      conversation = await enrichConversation(conversation, organization.id);
       const messages = await sb(`crm_messages?conversation_id=eq.${encodeURIComponent(conversationId)}&organization_id=eq.${organization.id}&select=id,direction,message_type,text,attachments,sent_at,created_at,external_message_id&order=sent_at.asc&limit=300`);
       return res.status(200).json({
         ok: true,
@@ -300,7 +452,7 @@ module.exports = async function handler(req, res) {
     }
 
     let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id)&order=last_message_at.desc.nullslast&limit=100`);
-    conversations = await Promise.all((conversations || []).map(enrichConversation));
+    conversations = await Promise.all((conversations || []).map(x => enrichConversation(x, organization.id)));
     const ids = conversations.map(x => x.id);
     const latestByConversation = {};
     if (ids.length) {
