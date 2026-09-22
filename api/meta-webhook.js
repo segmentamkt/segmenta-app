@@ -81,8 +81,8 @@ async function enrichFacebookContact(event, stored) {
   const pageToken = await getPageAccessToken(channel.external_account_id, integrationToken);
   if (!pageToken) return null;
 
-  const profile = await graphGet(`${event.sender_id}?fields=first_name,last_name,name,profile_pic`, pageToken);
-  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || profile?.name || null;
+  const profile = await graphGet(`${event.sender_id}?fields=first_name,last_name,profile_pic`, pageToken);
+  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || null;
   if (!displayName) return null;
 
   const metadata = {
@@ -198,6 +198,26 @@ module.exports = async function handler(req, res) {
           if (enriched?.display_name) console.log('META_CONTACT_ENRICHED', enriched.id, enriched.display_name);
         } catch (profileError) {
           console.warn('META_CONTACT_ENRICH_ERROR', event.channel_type, profileError.message);
+          try {
+            if (stored?.contact_id) {
+              const rows = await sb(`crm_contacts?id=eq.${encodeURIComponent(stored.contact_id)}&select=id,metadata&limit=1`);
+              const contact = rows?.[0];
+              if (contact) {
+                await sb(`crm_contacts?id=eq.${encodeURIComponent(stored.contact_id)}`, {
+                  method: 'PATCH',
+                  headers: { Prefer: 'return=minimal' },
+                  body: JSON.stringify({
+                    metadata: {
+                      ...(contact.metadata || {}),
+                      meta_profile_enrich_error: profileError.message,
+                      meta_profile_enrich_error_at: new Date().toISOString()
+                    },
+                    updated_at: new Date().toISOString()
+                  })
+                });
+              }
+            }
+          } catch (_) {}
         }
       } catch (error) {
         console.error('META_SOCIAL_STORE_ERROR', event.channel_type, error.message);
