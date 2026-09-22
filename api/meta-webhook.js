@@ -62,14 +62,14 @@ async function getPageAccessToken(pageId, integrationToken) {
   return null;
 }
 
-async function enrichFacebookContact(event, stored) {
-  if (!stored?.contact_id || event.channel_type !== 'facebook_messenger' || event.is_echo) return null;
+async function enrichMetaContact(event, stored) {
+  if (!stored?.contact_id || event.is_echo || !['facebook_messenger','instagram'].includes(event.channel_type)) return null;
 
   const contacts = await sb(`crm_contacts?id=eq.${encodeURIComponent(stored.contact_id)}&select=id,display_name,metadata&limit=1`);
   const current = contacts?.[0];
   if (!current || current.display_name) return current || null;
 
-  const channels = await sb(`crm_channels?id=eq.${encodeURIComponent(stored.channel_id)}&select=id,external_account_id,integration_id&limit=1`);
+  const channels = await sb(`crm_channels?id=eq.${encodeURIComponent(stored.channel_id)}&select=id,external_account_id,integration_id,metadata&limit=1`);
   const channel = channels?.[0];
   if (!channel?.integration_id) return null;
 
@@ -78,17 +78,65 @@ async function enrichFacebookContact(event, stored) {
   if (!integration?.credential_encrypted) return null;
 
   const integrationToken = decryptCredential(integration.credential_encrypted);
-  const pageToken = await getPageAccessToken(channel.external_account_id, integrationToken);
-  if (!pageToken) return null;
+  let accessToken = integrationToken;
 
-  const profile = await graphGet(`${event.sender_id}?fields=first_name,last_name,profile_pic`, pageToken);
-  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || null;
+  if (event.channel_type === 'facebook_messenger') {
+    accessToken = await getPageAccessToken(channel.external_account_id, integrationToken) || integrationToken;
+  } else {
+    const parentPageId = channel?.metadata?.parent_page_id || null;
+    if (parentPageId) {
+      accessToken = await getPageAccessToken(parentPageId, integrationToken) || integrationToken;
+    } else {
+      try {
+        const accounts = await graphGet('me/accounts?fields=id,access_token,instagram_business_account{id}&limit=100', integrationToken);
+        const page = (accounts?.data || []).find(x =>
+          String(x?.instagram_business_account?.id || '') === String(channel.external_account_id || '')
+        );
+        if (page?.access_token) accessToken = page.access_token;
+      } catch (_) {}
+    }
+  }
+
+  const attemptedAt = new Date().toISOString();
+  const profile = event.channel_type === 'instagram'
+    ? await graphGet(`${event.sender_id}?fields=id,name,username,profile_pic`, accessToken)
+    : await graphGet(`${event.sender_id}?fields=id,first_name,last_name,profile_pic`, accessToken);
+
+  const displayName = event.channel_type === 'instagram'
+    ? String(profile?.name || profile?.username || '').trim() || null
+    : [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || null;
   if (!displayName) return null;
+
+  const metaProfile = event.channel_type === 'instagram'
+    ? {
+        platform: 'instagram',
+        id: profile?.id || event.sender_id,
+        name: profile?.name || null,
+        username: profile?.username || null,
+        profile_pic: profile?.profile_pic || null,
+        synced_at: attemptedAt
+      }
+    : {
+        platform: 'facebook_messenger',
+        id: profile?.id || event.sender_id,
+        first_name: profile?.first_name || null,
+        last_name: profile?.last_name || null,
+        profile_pic: profile?.profile_pic || null,
+        synced_at: attemptedAt
+      };
 
   const metadata = {
     ...(current.metadata || {}),
+    meta_profile: metaProfile,
     meta_profile_pic: profile?.profile_pic || null,
-    meta_profile_enriched_at: new Date().toISOString()
+    meta_profile_enriched_at: attemptedAt,
+    meta_profile_sync: {
+      ok: true,
+      platform: event.channel_type,
+      code: 'OK',
+      attempted_at: attemptedAt,
+      token_configured: true
+    }
   };
 
   const updated = await sb(`crm_contacts?id=eq.${encodeURIComponent(stored.contact_id)}`, {
@@ -97,7 +145,7 @@ async function enrichFacebookContact(event, stored) {
     body: JSON.stringify({
       display_name: displayName,
       metadata,
-      updated_at: new Date().toISOString()
+      updated_at: attemptedAt
     })
   });
 
@@ -194,7 +242,7 @@ module.exports = async function handler(req, res) {
         if (stored?.ok) storedMessages += stored.duplicate ? 0 : 1;
         console.log('META_SOCIAL_STORED', JSON.stringify(stored));
         try {
-          const enriched = await enrichFacebookContact(event, stored);
+          const enriched = await enrichMetaContact(event, stored);
           if (enriched?.display_name) console.log('META_CONTACT_ENRICHED', enriched.id, enriched.display_name);
         } catch (profileError) {
           console.warn('META_CONTACT_ENRICH_ERROR', event.channel_type, profileError.message);
