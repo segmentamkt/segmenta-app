@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        const pendingRows = await sb('crm_integrations', {
+        const pendingRows = await sb('crm_integrations?on_conflict=organization_id,provider,integration_type,external_account_id', {
           method: 'POST',
           headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
           body: JSON.stringify({
