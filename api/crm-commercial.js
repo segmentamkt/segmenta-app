@@ -109,10 +109,10 @@ module.exports = async function handler(req, res) {
 
       if (type === 'dashboard') {
         const [opps, quotes, orders, tasks] = await Promise.all([
-          sb(`crm_opportunities?organization_id=eq.${orgId}&select=id,status,stage,value,cap_status,owner_user_id,created_at`),
-          sb(`crm_quotes?organization_id=eq.${orgId}&select=id,status,total,created_at`),
-          sb(`crm_orders?organization_id=eq.${orgId}&status=neq.deleted&select=id,status,total,payment_status,fulfillment_status,created_at`),
-          sb(`crm_tasks?organization_id=eq.${orgId}&status=in.(pending,in_progress)&select=id,status,priority,due_at`)
+          sb(`crm_opportunities?organization_id=eq.${orgId}&is_test=eq.false&select=id,status,stage,value,cap_status,owner_user_id,created_at`),
+          sb(`crm_quotes?organization_id=eq.${orgId}&is_test=eq.false&select=id,status,total,created_at`),
+          sb(`crm_orders?organization_id=eq.${orgId}&status=neq.deleted&is_test=eq.false&select=id,status,total,payment_status,fulfillment_status,created_at`),
+          sb(`crm_tasks?organization_id=eq.${orgId}&status=in.(pending,in_progress)&is_test=eq.false&select=id,status,priority,due_at`)
         ]);
         const openOpps = (opps || []).filter(x => x.status === 'open');
         return res.status(200).json({
@@ -136,19 +136,19 @@ module.exports = async function handler(req, res) {
       }
 
       if (type === 'opportunities') {
-        const rows = await sb(`crm_opportunities?organization_id=eq.${orgId}&select=*,contact:crm_contacts(id,display_name,phone,email,metadata),conversation:crm_conversations(id),cap:crm_cap(*)&order=updated_at.desc`);
+        const rows = await sb(`crm_opportunities?organization_id=eq.${orgId}&is_test=eq.false&select=*,contact:crm_contacts(id,display_name,phone,email,metadata),conversation:crm_conversations(id),cap:crm_cap(*)&order=updated_at.desc`);
         return res.status(200).json({ ok: true, opportunities: rows || [] });
       }
       if (type === 'quotes') {
-        const rows = await sb(`crm_quotes?organization_id=eq.${orgId}&select=*,contact:crm_contacts(id,display_name,phone,email),items:crm_quote_items(*)&order=created_at.desc`);
+        const rows = await sb(`crm_quotes?organization_id=eq.${orgId}&is_test=eq.false&select=*,contact:crm_contacts(id,display_name,phone,email),items:crm_quote_items(*)&order=created_at.desc`);
         return res.status(200).json({ ok: true, quotes: rows || [] });
       }
       if (type === 'orders') {
-        const rows = await sb(`crm_orders?organization_id=eq.${orgId}&status=neq.deleted&select=*,contact:crm_contacts(id,display_name,phone,email),items:crm_order_items(*)&order=created_at.desc`);
+        const rows = await sb(`crm_orders?organization_id=eq.${orgId}&status=neq.deleted&is_test=eq.false&select=*,contact:crm_contacts(id,display_name,phone,email),items:crm_order_items(*)&order=created_at.desc`);
         return res.status(200).json({ ok: true, orders: rows || [] });
       }
       if (type === 'tasks') {
-        const rows = await sb(`crm_tasks?organization_id=eq.${orgId}&select=*,contact:crm_contacts(id,display_name),opportunity:crm_opportunities(id,title)&order=due_at.asc.nullslast,created_at.desc`);
+        const rows = await sb(`crm_tasks?organization_id=eq.${orgId}&is_test=eq.false&select=*,contact:crm_contacts(id,display_name),opportunity:crm_opportunities(id,title)&order=due_at.asc.nullslast,created_at.desc`);
         return res.status(200).json({ ok: true, tasks: rows || [] });
       }
       if (type === 'audit') {
@@ -238,6 +238,13 @@ module.exports = async function handler(req, res) {
             created_by:isUuid(session.sub) ? session.sub : null,
             metadata:{source:'execution_engine_v1'}
           })});
+          try{
+            await sb('crm_stage_history',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({
+              organization_id:orgId,opportunity_id:opp.id,from_stage:null,to_stage:'new',
+              task_id:null,actor_user_id:isUuid(session.sub)?session.sub:null,transition_key:'created',is_test:false,
+              metadata:{source:'crm_create_opportunity'}
+            })});
+          }catch(_){}
           await audit(session,orgId,'opportunity.created','opportunity',opp.id,null,opp,{rule_of_gold:true});
         }
         return res.status(201).json({ok:true,opportunity:opp});
@@ -306,6 +313,9 @@ module.exports = async function handler(req, res) {
       }
 
       if(action === 'reset_cap'){
+        if(!isPlatformAdmin(session) && !isOrgOwner(session) && session?.role!=='admin'){
+          return res.status(403).json({ok:false,error:'Solo administración puede reiniciar CAP.'});
+        }
         const opp=await scopedOne('crm_opportunities',req.body?.opportunity_id,orgId);
         if(!opp)return res.status(404).json({ok:false,error:'Oportunidad no encontrada'});
         const capRows=await sb(`crm_cap?opportunity_id=eq.${opp.id}&organization_id=eq.${orgId}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({
@@ -366,6 +376,9 @@ module.exports = async function handler(req, res) {
       }
 
       if(action==='update_cap'){
+        if(!isPlatformAdmin(session) && !isOrgOwner(session) && !['admin'].includes(session?.role)){
+          return res.status(403).json({ok:false,error:'CAP avanza únicamente al ejecutar las tareas obligatorias. Un administrador puede corregirlo manualmente.'});
+        }
         const oppId=String(req.body?.opportunity_id||'');
         const opp=await scopedOne('crm_opportunities',oppId,orgId);
         if(!opp)return res.status(404).json({ok:false,error:'Oportunidad no encontrada'});
