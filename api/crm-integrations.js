@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { verifySession, canManageIntegrations } = require('./_crm-session');
+const { decryptCredential } = require('./_crm-crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -37,6 +38,226 @@ function signState(data) {
   const raw = Buffer.from(JSON.stringify(data)).toString('base64url');
   const sig = crypto.createHmac('sha256', SUPABASE_SERVICE_ROLE_KEY).update(raw).digest('hex');
   return `${raw}.${sig}`;
+}
+
+async function graphRequest(path, accessToken, options = {}) {
+  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${String(path).replace(/^\//,'')}`);
+  const response = await fetch(url.toString(), {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error?.message || `Meta Graph ${response.status}`);
+  return data;
+}
+
+async function safeGraph(path, accessToken) {
+  try { return await graphRequest(path, accessToken); }
+  catch (_) { return null; }
+}
+
+async function debugToken(accessToken) {
+  try {
+    const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token`);
+    url.searchParams.set('input_token', accessToken);
+    const appToken = `${META_APP_ID}|${META_APP_SECRET}`;
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${appToken}`, Accept: 'application/json' }
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok ? data?.data || null : null;
+  } catch (_) { return null; }
+}
+
+async function subscribeAsset(assetId, accessToken, fields) {
+  try {
+    const body = new URLSearchParams();
+    body.set('subscribed_fields', fields);
+    const data = await graphRequest(`${assetId}/subscribed_apps`, accessToken, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    });
+    return { ok: data?.success !== false, data };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
+async function discoverMetaAssets(accessToken) {
+  const pages = new Map();
+  const instagram = new Map();
+
+  const accounts = await safeGraph('me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name}&limit=100', accessToken);
+  for (const page of (accounts?.data || [])) {
+    if (!page?.id) continue;
+    pages.set(String(page.id), {
+      id: String(page.id),
+      name: page.name || 'Facebook Page',
+      page_access_token: page.access_token || null
+    });
+    if (page.instagram_business_account?.id) {
+      const ig = page.instagram_business_account;
+      instagram.set(String(ig.id), {
+        id: String(ig.id),
+        name: ig.username || ig.name || 'Instagram',
+        parent_page_id: String(page.id),
+        page_access_token: page.access_token || null
+      });
+    }
+  }
+
+  const assigned = await safeGraph('me/assigned_pages?fields=id,name,access_token,instagram_business_account{id,username,name}&limit=100', accessToken);
+  for (const page of (assigned?.data || [])) {
+    if (!page?.id) continue;
+    const existing = pages.get(String(page.id)) || {};
+    pages.set(String(page.id), {
+      ...existing,
+      id: String(page.id),
+      name: page.name || existing.name || 'Facebook Page',
+      page_access_token: page.access_token || existing.page_access_token || null
+    });
+    if (page.instagram_business_account?.id) {
+      const ig = page.instagram_business_account;
+      instagram.set(String(ig.id), {
+        id: String(ig.id),
+        name: ig.username || ig.name || 'Instagram',
+        parent_page_id: String(page.id),
+        page_access_token: page.access_token || existing.page_access_token || null
+      });
+    }
+  }
+
+  const debug = await debugToken(accessToken);
+  const granular = Array.isArray(debug?.granular_scopes) ? debug.granular_scopes : [];
+  const pageTargets = new Set();
+  const igTargets = new Set();
+
+  for (const scope of granular) {
+    const name = String(scope?.scope || '');
+    for (const id of (scope?.target_ids || [])) {
+      if (name.startsWith('pages_') || ['pages_show_list','pages_messaging'].includes(name)) pageTargets.add(String(id));
+      if (name.startsWith('instagram_')) igTargets.add(String(id));
+    }
+  }
+
+  for (const id of pageTargets) {
+    if (pages.has(id)) continue;
+    const data = await safeGraph(`${id}?fields=id,name,access_token,instagram_business_account{id,username,name}`, accessToken);
+    if (!data?.id) continue;
+    pages.set(id, {
+      id,
+      name: data.name || 'Facebook Page',
+      page_access_token: data.access_token || null
+    });
+    if (data.instagram_business_account?.id) {
+      const ig = data.instagram_business_account;
+      instagram.set(String(ig.id), {
+        id: String(ig.id),
+        name: ig.username || ig.name || 'Instagram',
+        parent_page_id: id,
+        page_access_token: data.access_token || null
+      });
+    }
+  }
+
+  for (const id of igTargets) {
+    if (instagram.has(id)) continue;
+    const data = await safeGraph(`${id}?fields=id,username,name`, accessToken);
+    if (!data?.id) continue;
+    instagram.set(id, {
+      id,
+      name: data.username || data.name || 'Instagram',
+      parent_page_id: null,
+      page_access_token: null
+    });
+  }
+
+  return {
+    pages: [...pages.values()],
+    instagram: [...instagram.values()],
+    debug: debug ? {
+      user_id: debug.user_id || null,
+      type: debug.type || null,
+      scopes: debug.scopes || [],
+      granular_scopes: granular.map(x => ({ scope: x.scope, target_ids: x.target_ids || [] }))
+    } : null
+  };
+}
+
+async function upsertChannel(orgId, integrationId, channelType, asset, subscription) {
+  const rows = await sb('crm_channels?on_conflict=organization_id,channel_type,external_account_id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({
+      organization_id: orgId,
+      channel_type: channelType,
+      external_account_id: asset.id,
+      external_account_name: asset.name,
+      status: subscription?.ok ? 'connected' : 'pending',
+      integration_id: integrationId,
+      metadata: {
+        source: 'meta_business_login',
+        messages: Boolean(subscription?.ok),
+        auto_provisioned: true,
+        parent_page_id: asset.parent_page_id || null,
+        subscription_ok: Boolean(subscription?.ok),
+        subscription_error: subscription?.error || null,
+        synced_at: new Date().toISOString()
+      },
+      updated_at: new Date().toISOString()
+    })
+  });
+  return rows?.[0] || null;
+}
+
+async function syncMetaAssets(org, integration, accessToken) {
+  const assets = await discoverMetaAssets(accessToken);
+  const channels = [];
+  const subscriptions = [];
+
+  for (const page of assets.pages) {
+    let sub = await subscribeAsset(page.id, page.page_access_token || accessToken, 'messages,messaging_postbacks,message_deliveries,message_reads');
+    if (!sub.ok && page.page_access_token) sub = await subscribeAsset(page.id, accessToken, 'messages,messaging_postbacks,message_deliveries,message_reads');
+    subscriptions.push({ type: 'facebook_messenger', id: page.id, ok: sub.ok, error: sub.error || null });
+    channels.push(await upsertChannel(org.id, integration.id, 'facebook_messenger', page, sub));
+  }
+
+  for (const ig of assets.instagram) {
+    let sub = await subscribeAsset(ig.id, ig.page_access_token || accessToken, 'messages');
+    if (!sub.ok && ig.page_access_token) sub = await subscribeAsset(ig.id, accessToken, 'messages');
+    subscriptions.push({ type: 'instagram', id: ig.id, ok: sub.ok, error: sub.error || null });
+    channels.push(await upsertChannel(org.id, integration.id, 'instagram', ig, sub));
+  }
+
+  await sb(`crm_integrations?id=eq.${integration.id}&organization_id=eq.${org.id}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      last_sync_at: new Date().toISOString(),
+      last_error: null,
+      metadata: {
+        ...(integration.metadata || {}),
+        assets_synced_at: new Date().toISOString(),
+        discovered_pages: assets.pages.map(x => ({ id: x.id, name: x.name })),
+        discovered_instagram: assets.instagram.map(x => ({ id: x.id, name: x.name, parent_page_id: x.parent_page_id || null })),
+        subscriptions
+      },
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  return {
+    pages: assets.pages.map(x => ({ id: x.id, name: x.name })),
+    instagram: assets.instagram.map(x => ({ id: x.id, name: x.name, parent_page_id: x.parent_page_id || null })),
+    channels: channels.filter(Boolean),
+    subscriptions,
+    debug: assets.debug
+  };
 }
 
 async function audit(session, orgId, action, entityType, entityId, afterData = null, metadata = {}) {
@@ -136,6 +357,22 @@ module.exports = async function handler(req, res) {
         url.searchParams.set('state', state);
         await audit(session, org.id, 'integration.meta_oauth_started', 'integration', integration?.id, integration);
         return res.status(200).json({ ok: true, authorization_url: url.toString(), integration });
+      }
+
+      if (action === 'sync_meta_assets') {
+        const rows = await sb(`crm_integrations?organization_id=eq.${org.id}&provider=eq.meta&integration_type=eq.business_portfolio&status=eq.connected&select=id,organization_id,status,metadata,credential_encrypted&order=connected_at.desc&limit=1`);
+        const integration = rows?.[0];
+        if (!integration) return res.status(404).json({ ok:false, error:'No hay una integración Meta conectada para esta empresa' });
+        if (!integration.credential_encrypted) return res.status(409).json({ ok:false, error:'La conexión Meta no tiene credencial activa. Vuelve a conectarla.' });
+
+        const accessToken = decryptCredential(integration.credential_encrypted);
+        const result = await syncMetaAssets(org, integration, accessToken);
+        await audit(session, org.id, 'integration.meta_assets_synced', 'integration', integration.id, null, {
+          pages: result.pages.length,
+          instagram: result.instagram.length,
+          subscriptions: result.subscriptions
+        });
+        return res.status(200).json({ ok:true, ...result });
       }
 
       if (action === 'disconnect') {
