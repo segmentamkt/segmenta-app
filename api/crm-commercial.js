@@ -458,8 +458,11 @@ module.exports = async function handler(req, res) {
         const before=await scopedOne('crm_tasks',id,orgId);
         if(!before)return res.status(404).json({ok:false,error:'Tarea no encontrada'});
         const requestedStatus=clean(req.body?.status,50);
-        if(['done','completed'].includes(requestedStatus)){
-          return res.status(409).json({ok:false,error:'Las tareas comerciales se completan desde “Ejecutar tarea” para validar evidencia y generar la siguiente acción.'});
+        if(before.auto_generated && ['sales','agent'].includes(session?.role) && !isPlatformAdmin(session)){
+          return res.status(403).json({ok:false,error:'Las tareas obligatorias no se pueden editar. Deben ejecutarse y validarse.'});
+        }
+        if(before.auto_generated && ['done','completed'].includes(requestedStatus)){
+          return res.status(409).json({ok:false,error:'Las tareas obligatorias se completan desde “Ejecutar tarea” para validar evidencia y generar la siguiente acción.'});
         }
         const patch={updated_at:new Date().toISOString()};
         for(const k of ['title','description','status','priority'])if(req.body?.[k]!==undefined)patch[k]=clean(req.body[k],k==='description'?5000:500);
