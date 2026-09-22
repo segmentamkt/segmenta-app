@@ -184,11 +184,41 @@ module.exports = async function handler(req, res) {
           : 'P3';
         const dueAt = req.body?.next_follow_up_at || new Date(Date.now() + 15 * 60000).toISOString();
 
+        let contactId=req.body?.contact_id || null;
+        if(!contactId){
+          const contactName=clean(req.body?.contact_name,300);
+          const contactPhone=clean(req.body?.contact_phone,100);
+          if(!contactName || !contactPhone){
+            return res.status(400).json({ok:false,error:'Nombre y teléfono son obligatorios para crear un lead manual.'});
+          }
+          const channelRows=await sb('crm_channels?on_conflict=organization_id,channel_type,external_account_id',{
+            method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+            body:JSON.stringify({
+              organization_id:orgId,channel_type:'webchat',external_account_id:'manual-crm',
+              external_account_name:'Ingreso manual CRM',status:'connected',
+              metadata:{source:'manual_crm'},updated_at:new Date().toISOString()
+            })
+          });
+          const channel=channelRows?.[0];
+          if(!channel)return res.status(500).json({ok:false,error:'No fue posible preparar el canal manual.'});
+          const externalUser='manual:'+contactPhone.replace(/\s+/g,'');
+          const contactRows=await sb('crm_contacts?on_conflict=channel_id,external_user_id',{
+            method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+            body:JSON.stringify({
+              organization_id:orgId,channel_id:channel.id,external_user_id:externalUser,
+              display_name:contactName,phone:contactPhone,email:clean(req.body?.contact_email,320),
+              metadata:{source:'Ingreso manual CRM'},updated_at:new Date().toISOString()
+            })
+          });
+          contactId=contactRows?.[0]?.id||null;
+          if(!contactId)return res.status(500).json({ok:false,error:'No fue posible crear el contacto del lead.'});
+        }
+
         const rows = await sb('crm_opportunities', {
           method:'POST', headers:{Prefer:'return=representation'},
           body:JSON.stringify({
             organization_id:orgId,
-            contact_id:req.body?.contact_id || null,
+            contact_id:contactId,
             conversation_id:req.body?.conversation_id || null,
             owner_user_id:ownerUserId,
             title,
