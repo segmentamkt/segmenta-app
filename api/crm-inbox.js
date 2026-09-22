@@ -451,7 +451,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id)&order=last_message_at.desc.nullslast&limit=100`);
+    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id,integration_id,status,metadata)&order=last_message_at.desc.nullslast&limit=100`);
     conversations = await Promise.all((conversations || []).map(x => enrichConversation(x, organization.id)));
     const ids = conversations.map(x => x.id);
     const latestByConversation = {};
