@@ -1,0 +1,25 @@
+#page-integrations .page-head{margin-bottom:10px}
+#page-integrations .feature-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#page-integrations .feature-grid:before{content:"✦  Todas   6     ◉  Canales   2     ↗  Publicidad   1     ✧  IA   1     ▣  Comercio   1     ⌁  Logística   1";grid-column:1/-1;white-space:pre-wrap;border-bottom:1px solid var(--line);padding:10px 4px 16px;margin-bottom:2px;color:var(--muted);font-size:.72rem;font-weight:800;word-spacing:5px}
+#page-integrations .feature-card{position:relative;min-height:245px;border:1px solid var(--line);border-radius:15px;padding:18px;background:#fff;box-shadow:0 2px 8px rgba(57,39,23,.025);transition:.15s ease;display:flex;flex-direction:column}
+#page-integrations .feature-card:hover{border-color:#d9cec3;box-shadow:0 7px 22px rgba(57,39,23,.055);transform:translateY(-1px)}
+#page-integrations .feature-card>b{display:block;padding-left:60px;min-height:48px;font-size:.92rem;line-height:1.25;padding-top:4px}
+#page-integrations .feature-card>b:before{position:absolute;left:18px;top:18px;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:1.2rem;font-weight:900;border:1px solid rgba(0,0,0,.04)}
+#page-integrations .feature-card:nth-child(1)>b:before{content:"∞";background:#eef4ff;color:#1877f2;font-size:1.55rem}
+#page-integrations .feature-card:nth-child(2)>b:before{content:"◔";background:#eaf9ef;color:#1ebd59}
+#page-integrations .feature-card:nth-child(3)>b:before{content:"↗";background:#eef6ff;color:#2478d7}
+#page-integrations .feature-card:nth-child(4)>b:before{content:"✦";background:#f2efff;color:#6656d9}
+#page-integrations .feature-card:nth-child(5)>b:before{content:"W";background:#fff4e7;color:#c66c08}
+#page-integrations .feature-card:nth-child(6)>b:before{content:"◎";background:#f1f5f4;color:#3b7064}
+#page-integrations .feature-card p{font-size:.74rem;line-height:1.55;margin:16px 0 14px;min-height:56px}
+#page-integrations .feature-card>.state,#page-integrations .feature-card>div[id$="State"]{position:absolute;right:16px;top:16px}
+#page-integrations .feature-card .inline-actions{margin-top:auto!important;display:grid;gap:8px}
+#page-integrations .feature-card .inline-actions .btn{width:100%;min-height:38px}
+#page-integrations .feature-card:nth-child(2) .state,#page-integrations .feature-card:nth-child(3) .state,#page-integrations .feature-card:nth-child(4) .state,#page-integrations .feature-card:nth-child(5) .state{position:absolute;right:16px;top:16px}
+#page-integrations .state.ok{background:#e9f8ef;color:#18884b}
+#page-integrations .state.wait{background:#fff5dc;color:#9d6a00}
+#page-integrations .state.off{background:#f2f0ed;color:#756d64}
+#page-integrations #metaConnectBtn{background:var(--brand);border-color:var(--brand);color:#fff}
+#page-integrations #metaDisconnectBtn{background:#fff;color:var(--red);border-color:#efc5bd}
+@media(max-width:1250px){#page-integrations .feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){#page-integrations .feature-grid{grid-template-columns:1fr}#page-integrations .feature-grid:before{overflow:auto;white-space:nowrap}}
