@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { decryptCredential } = require('./_crm-crypto');
 
 const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'segmenta_meta_verify_2026';
 const WEBHOOK_VERSION = 'social-inbox-2026-09-17-1';
@@ -15,6 +16,92 @@ function verifySignature(req) {
   const a = Buffer.from(signature);
   const b = Buffer.from(expected);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+
+async function sb(path, options = {}) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase storage not configured');
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+  if (!response.ok) throw new Error(`Supabase ${response.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+  return data;
+}
+
+async function graphGet(path, token) {
+  const url = new URL(`https://graph.facebook.com/v26.0/${String(path).replace(/^\//,'')}`);
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error?.message || `Meta Graph ${response.status}`);
+  return data;
+}
+
+async function getPageAccessToken(pageId, integrationToken) {
+  try {
+    const page = await graphGet(`${pageId}?fields=access_token`, integrationToken);
+    if (page?.access_token) return page.access_token;
+  } catch (_) {}
+
+  try {
+    const accounts = await graphGet('me/accounts?fields=id,access_token&limit=100', integrationToken);
+    const page = (accounts?.data || []).find(x => String(x.id) === String(pageId));
+    if (page?.access_token) return page.access_token;
+  } catch (_) {}
+
+  return null;
+}
+
+async function enrichFacebookContact(event, stored) {
+  if (!stored?.contact_id || event.channel_type !== 'facebook_messenger' || event.is_echo) return null;
+
+  const contacts = await sb(`crm_contacts?id=eq.${encodeURIComponent(stored.contact_id)}&select=id,display_name,metadata&limit=1`);
+  const current = contacts?.[0];
+  if (!current || current.display_name) return current || null;
+
+  const channels = await sb(`crm_channels?id=eq.${encodeURIComponent(stored.channel_id)}&select=id,external_account_id,integration_id&limit=1`);
+  const channel = channels?.[0];
+  if (!channel?.integration_id) return null;
+
+  const integrations = await sb(`crm_integrations?id=eq.${encodeURIComponent(channel.integration_id)}&status=eq.connected&select=id,credential_encrypted&limit=1`);
+  const integration = integrations?.[0];
+  if (!integration?.credential_encrypted) return null;
+
+  const integrationToken = decryptCredential(integration.credential_encrypted);
+  const pageToken = await getPageAccessToken(channel.external_account_id, integrationToken);
+  if (!pageToken) return null;
+
+  const profile = await graphGet(`${event.sender_id}?fields=first_name,last_name,name,profile_pic`, pageToken);
+  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || profile?.name || null;
+  if (!displayName) return null;
+
+  const metadata = {
+    ...(current.metadata || {}),
+    meta_profile_pic: profile?.profile_pic || null,
+    meta_profile_enriched_at: new Date().toISOString()
+  };
+
+  const updated = await sb(`crm_contacts?id=eq.${encodeURIComponent(stored.contact_id)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      display_name: displayName,
+      metadata,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  return updated?.[0] || null;
 }
 
 async function persistSocialEvent(event) {
@@ -106,6 +193,12 @@ module.exports = async function handler(req, res) {
         const stored = await persistSocialEvent(event);
         if (stored?.ok) storedMessages += stored.duplicate ? 0 : 1;
         console.log('META_SOCIAL_STORED', JSON.stringify(stored));
+        try {
+          const enriched = await enrichFacebookContact(event, stored);
+          if (enriched?.display_name) console.log('META_CONTACT_ENRICHED', enriched.id, enriched.display_name);
+        } catch (profileError) {
+          console.warn('META_CONTACT_ENRICH_ERROR', event.channel_type, profileError.message);
+        }
       } catch (error) {
         console.error('META_SOCIAL_STORE_ERROR', event.channel_type, error.message);
       }
