@@ -232,6 +232,13 @@ let currentOrgSlug='segmenta',KEY='segmenta_crm_v1_segmenta',leads=[],crmSession
 function loadLocalLeads(){KEY='segmenta_crm_v1_'+currentOrgSlug;try{leads=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(_){leads=[]}}
 loadLocalLeads();
 let editing=null,currentView='board',currentPage='dashboard';let inboxConversations=[],activeConversationId=null,activeConversationData=null,inboxPoll=null,inboxAuthenticated=false,contactFormDirty=false;
+try{
+  Object.defineProperty(window,'crmSession',{configurable:true,get:()=>crmSession,set:v=>{crmSession=v}});
+  Object.defineProperty(window,'currentPage',{configurable:true,get:()=>currentPage,set:v=>{currentPage=v}});
+  Object.defineProperty(window,'currentOrgSlug',{configurable:true,get:()=>currentOrgSlug,set:v=>{currentOrgSlug=v}});
+  Object.defineProperty(window,'activeConversationId',{configurable:true,get:()=>activeConversationId,set:v=>{activeConversationId=v}});
+}catch(_){}
+
 const leadFields=['name','business','phone','email','service','goal','budget','source','status','nextAction','campaign','adset','ad','notes'];
 function gid(){return 'l_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]))}
