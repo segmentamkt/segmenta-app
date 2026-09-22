@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { encryptCredential } = require('./_crm-crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -130,17 +131,10 @@ module.exports = async function handler(req, res) {
     const externalId = business?.id || identity?.id || integration.external_account_id;
     const displayName = business?.name || identity?.name || 'Meta Business Portfolio';
 
-    await sb('rpc/crm_store_integration_secret', {
-      method: 'POST',
-      headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({
-        p_integration_id: integration.id,
-        p_secret: accessToken,
-        p_name: `meta-business-${integration.organization_id}`
-      })
-    });
+    const encryptedCredential = encryptCredential(accessToken);
 
     await patchIntegration(integration.id, integration.organization_id, {
+      credential_encrypted: encryptedCredential,
       status: 'connected',
       display_name: displayName,
       external_account_id: externalId,
