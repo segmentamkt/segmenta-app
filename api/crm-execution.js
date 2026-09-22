@@ -138,7 +138,7 @@ async function createAutoTask({ orgId, opportunity, type, session, sequence = 0,
   return rows?.[0] || null;
 }
 async function activeTaskForOpportunity(orgId, opportunityId) {
-  const rows = await sb(`crm_tasks?organization_id=eq.${orgId}&opportunity_id=eq.${encodeURIComponent(opportunityId)}&status=in.(pending,in_progress)&select=*&order=due_at.asc.nullslast,created_at.asc&limit=1`);
+  const rows = await sb(`crm_tasks?organization_id=eq.${orgId}&opportunity_id=eq.${encodeURIComponent(opportunityId)}&auto_generated=eq.true&status=in.(pending,in_progress)&select=*&order=due_at.asc.nullslast,created_at.asc&limit=1`);
   return rows?.[0] || null;
 }
 async function ensureRuleOfGold(orgId, session, testMode = false) {
@@ -496,7 +496,7 @@ module.exports = async function handler(req, res) {
       const testFilter=testMode?'&is_test=eq.true':'&is_test=eq.false';
       const oppFilter=opportunityId?`&opportunity_id=eq.${encodeURIComponent(opportunityId)}`:'';
       const rows = await sb(
-        `crm_tasks?organization_id=eq.${orgId}&status=in.(pending,in_progress)${scope}${testFilter}${oppFilter}&select=*,contact:crm_contacts(id,display_name,phone,email,metadata,is_test),opportunity:crm_opportunities(id,contact_id,title,stage,status,value,priority,product,city,quantity,usage_type,urgency,source,owner_user_id,conversation_id,is_test,conversation:crm_conversations(id,unread_count,last_message_at),cap:crm_cap(step,next_action,next_action_at,sequence))&order=due_at.asc.nullslast,created_at.asc&limit=250`
+        `crm_tasks?organization_id=eq.${orgId}&status=in.(pending,in_progress)&auto_generated=eq.true${scope}${testFilter}${oppFilter}&select=*,contact:crm_contacts(id,display_name,phone,email,metadata,is_test),opportunity:crm_opportunities(id,contact_id,title,stage,status,value,priority,product,city,quantity,usage_type,urgency,source,owner_user_id,conversation_id,is_test,conversation:crm_conversations(id,unread_count,last_message_at),cap:crm_cap(step,next_action,next_action_at,sequence))&order=due_at.asc.nullslast,created_at.asc&limit=250`
       );
       const queue = (rows || []).map(enrichTask).sort((a,b) => b.execution_score - a.execution_score);
       return res.status(200).json({
