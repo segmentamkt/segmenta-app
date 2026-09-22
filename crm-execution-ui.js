@@ -182,9 +182,12 @@
   }
 
   function qualificationFields(task){
-    const o=task.opportunity||{};
+    const o=task.opportunity||{},ct=task.contact||{};
     return `
       <div class="execution-form-grid">
+        <div class="execution-field"><label>Nombre del cliente *</label><input id="execContactName" value="${escx(ct.display_name||'')}"></div>
+        <div class="execution-field"><label>Teléfono *</label><input id="execContactPhone" value="${escx(ct.phone||'')}"></div>
+        <div class="execution-field full"><label>Correo</label><input id="execContactEmail" value="${escx(ct.email||'')}"></div>
         <div class="execution-field full"><label>Producto o servicio *</label><input id="execProduct" value="${escx(o.product||'')}"></div>
         <div class="execution-field"><label>Cantidad *</label><input id="execQuantity" type="number" min="0.001" step="0.001" value="${escx(o.quantity||'')}"></div>
         <div class="execution-field"><label>Ciudad *</label><input id="execCity" value="${escx(o.city||'')}"></div>
@@ -200,6 +203,42 @@
     const contact=task.contact||{};
     let special='';
     if(task.task_type==='qualify') special=qualificationFields(task);
+    if(['follow_up_24h','follow_up_48h','follow_up_72h','future_follow_up'].includes(task.task_type)){
+      special=`
+        <div class="execution-form-grid">
+          <div class="execution-field full"><label>Resultado del seguimiento *</label>
+            <select id="execOutcome">
+              <option value="">Seleccionar resultado</option>
+              <option value="interested">Cliente interesado → negociación</option>
+              <option value="no_response">No respondió → siguiente seguimiento</option>
+              <option value="needs_info">Pidió más información</option>
+              <option value="lost">No continuará → cerrar perdido</option>
+            </select>
+          </div>
+          ${task.task_type==='future_follow_up'?'<div class="execution-field full"><label>Nueva fecha si continúa sin responder</label><input id="execFutureDue" type="datetime-local"></div>':''}
+        </div>`;
+    }
+    if(task.task_type==='negotiation'){
+      special=`
+        <div class="execution-form-grid">
+          <div class="execution-field full"><label>Resultado de la negociación *</label>
+            <select id="execOutcome">
+              <option value="">Seleccionar resultado</option>
+              <option value="won">Acuerdo cerrado → registrar venta</option>
+              <option value="follow_up">Necesita seguimiento</option>
+              <option value="lost">Negocio perdido</option>
+            </select>
+          </div>
+        </div>`;
+    }
+    if(task.task_type==='close_won'){
+      special=`
+        <div class="execution-form-grid">
+          <div class="execution-field full"><label>Método de pago *</label>
+            <select id="execPaymentMethod"><option value="">Seleccionar</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="contraentrega">Contraentrega</option><option value="otro">Otro</option></select>
+          </div>
+        </div>`;
+    }
     if(task.task_type==='close_lost'){
       special=`
         <div class="execution-form-grid">
@@ -216,19 +255,22 @@
         </div>`;
     }
 
-    const inboxButton = ['contact_client','send_message','follow_up_24h','follow_up_48h','follow_up_72h'].includes(task.task_type)
-      ? '<button class="btn" type="button" onclick="executionOpenInbox()">Abrir Bandeja</button>' : '';
+    const inboxButton = ['contact_client','send_message','follow_up_24h','follow_up_48h','follow_up_72h','future_follow_up'].includes(task.task_type)
+      ? '<button class="btn" type="button" onclick="executionOpenInbox()">Abrir conversación</button>' : '';
     const quoteButton = task.task_type==='quote'
-      ? '<button class="btn primary" type="button" onclick="executionOpenQuotes()">Ir a Cotizaciones</button>' : '';
+      ? '<button class="btn primary" type="button" onclick="executionOpenQuotes()">Crear cotización</button>' : '';
 
     return `
       <div class="execution-help"><b>${escx(contact.display_name||opp.title||'Cliente')}</b><br>${escx(typeHelp(task.task_type))}</div>
+      <div class="execution-stepper" style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px">
+        <span class="execution-chip">1 · Ejecutar</span><span class="execution-chip">2 · Registrar resultado</span><span class="execution-chip">3 · Validar evidencia</span><span class="execution-chip">4 · Generar siguiente</span>
+      </div>
       ${special}
       <div class="execution-field full" style="margin-top:10px"><label>Nota / resultado de la acción</label><textarea id="execCompletionNote" placeholder="Registra contexto útil de la ejecución..."></textarea></div>
       <div class="execution-modal-actions">
         ${inboxButton}
         ${quoteButton}
-        <button class="btn primary" type="button" onclick="completeCurrentExecutionTask()">Completar tarea</button>
+        <button class="btn primary" type="button" onclick="completeCurrentExecutionTask()">Validar y continuar</button>
       </div>`;
   }
 
@@ -238,6 +280,10 @@
       if(!task){
         await getExecutionQueue();
         task=executionQueue.find(x=>x.id===id);
+      }
+      if(!task){
+        const r=await fetch('/api/crm-execution?test=1',{cache:'no-store'}),j=await r.json();
+        if(r.ok)task=(j.queue||[]).find(x=>x.id===id);
       }
       if(!task)throw new Error('La tarea ya no está disponible');
       await startTask(task);
@@ -252,8 +298,9 @@
   };
 
   window.executionOpenInbox=function(){
+    const isTest=Boolean(executionCurrent?.opportunity?.is_test);
     window.closeExecutionModal();
-    if(typeof window.showPage==='function')window.showPage('inbox');
+    if(typeof window.showPage==='function')window.showPage(isTest?'qa':'inbox');
   };
 
   window.executionOpenQuotes=function(){
@@ -284,24 +331,6 @@
     banner.innerHTML='<b>Cotización vinculada a tarea:</b> '+escx(t.contact?.display_name||t.opportunity?.title||'Cliente')+' · '+escx(t.opportunity?.product||'Producto por definir')+'. Al crearla, el CRM completará la tarea y programará el seguimiento de 24 horas.';
   }
 
-  async function saveQualification(task){
-    const body={
-      action:'update_opportunity',
-      id:task.opportunity?.id,
-      product:document.getElementById('execProduct')?.value||'',
-      quantity:document.getElementById('execQuantity')?.value||'',
-      city:document.getElementById('execCity')?.value||'',
-      usage_type:document.getElementById('execUsage')?.value||'',
-      urgency:document.getElementById('execUrgency')?.value||'',
-      source:document.getElementById('execSource')?.value||'',
-      priority:document.getElementById('execPriority')?.value||'P3'
-    };
-    const r=await fetch('/api/crm-commercial',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const j=await r.json();
-    if(!r.ok)throw new Error(j.error||'No fue posible guardar la calificación');
-    task.opportunity={...(task.opportunity||{}),...(j.opportunity||body)};
-  }
-
   async function sendComplete(task,extra={}){
     const note=document.getElementById('execCompletionNote')?.value||'';
     const payload={action:'complete_task',task_id:task.id,completion_note:note,...extra};
@@ -315,19 +344,38 @@
     if(!executionCurrent)return;
     try{
       const t=executionCurrent;
-      if(t.task_type==='qualify')await saveQualification(t);
       const extra={};
+      if(t.task_type==='qualify'){
+        extra.contact_name=document.getElementById('execContactName')?.value||'';
+        extra.contact_phone=document.getElementById('execContactPhone')?.value||'';
+        extra.contact_email=document.getElementById('execContactEmail')?.value||'';
+        extra.product=document.getElementById('execProduct')?.value||'';
+        extra.quantity=document.getElementById('execQuantity')?.value||'';
+        extra.city=document.getElementById('execCity')?.value||'';
+        extra.usage_type=document.getElementById('execUsage')?.value||'';
+        extra.urgency=document.getElementById('execUrgency')?.value||'';
+        extra.source=document.getElementById('execSource')?.value||'';
+        extra.priority=document.getElementById('execPriority')?.value||'P3';
+      }
+      if(['follow_up_24h','follow_up_48h','follow_up_72h','future_follow_up','negotiation'].includes(t.task_type)){
+        extra.outcome=document.getElementById('execOutcome')?.value||'';
+      }
+      if(t.task_type==='future_follow_up')extra.future_due_at=document.getElementById('execFutureDue')?.value||null;
       if(t.task_type==='close_lost'){
         extra.lost_reason=document.getElementById('execLostReason')?.value||'';
         extra.lost_reason_note=document.getElementById('execLostNote')?.value||'';
       }
+      if(t.task_type==='close_won')extra.payment_method=document.getElementById('execPaymentMethod')?.value||'';
+
       const result=await sendComplete(t,extra);
       window.closeExecutionModal();
       executionCurrent=null;
-      if(typeof window.toast==='function')window.toast(result.next_task?'Tarea completada · siguiente acción creada':'Tarea completada');
+      if(typeof window.toast==='function')window.toast(result.next_task?'Tarea validada · siguiente acción creada':'Proceso actualizado');
       await loadExecutionQueue();
       if(typeof window.loadTasks==='function' && window.currentPage==='tasks')await window.loadTasks();
       if(typeof window.loadDashboard==='function' && window.currentPage==='dashboard')await window.loadDashboard();
+      if(typeof window.loadPipelineVisual==='function' && window.currentPage==='cap')await window.loadPipelineVisual();
+      if(typeof window.refreshQaSimulator==='function')await window.refreshQaSimulator();
     }catch(err){
       if(typeof window.toast==='function')window.toast(err.message); else alert(err.message);
     }
