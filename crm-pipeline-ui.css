@@ -1,0 +1,59 @@
+/* Segmenta Pipeline / CAP visual system */
+.pipeline-shell{margin-top:4px}
+.pipeline-tabs{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);background:#fff;border-radius:12px;margin:0 0 16px}
+.pipeline-tab{border:0;background:transparent;color:var(--muted);padding:8px 13px;border-radius:9px;font-size:.72rem;font-weight:850;cursor:pointer}
+.pipeline-tab.active{background:#2e1c10;color:#fff;box-shadow:0 3px 10px rgba(46,28,16,.15)}
+.pipeline-lock-note{display:flex;align-items:center;gap:8px;font-size:.69rem;color:#6f6258;background:#fff9ef;border:1px solid #eedabf;border-radius:11px;padding:9px 12px;margin-bottom:15px}
+.pipeline-lock-note b{color:#9b5b12}
+.pipeline-view{display:none}
+.pipeline-view.active{display:block}
+.funnel-layout{display:grid;grid-template-columns:minmax(520px,1.2fr) minmax(310px,.8fr);gap:18px;align-items:start}
+.funnel-card,.pipeline-detail,.kanban-wrap{background:#fff;border:1px solid var(--line);border-radius:17px;padding:18px;box-shadow:0 4px 18px rgba(49,34,21,.035)}
+.funnel-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px}
+.funnel-card-head h3,.pipeline-detail h3{font-family:var(--display);font-size:1rem;margin:0}
+.funnel-card-head p,.pipeline-detail p{font-size:.68rem;color:var(--muted);margin:4px 0 0}
+.funnel-stack{display:flex;flex-direction:column;align-items:center;gap:5px;padding:5px 0 2px}
+.funnel-segment{position:relative;min-height:58px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:9px 22px;color:#fff;cursor:pointer;transition:.16s ease;clip-path:polygon(4% 0,96% 0,91% 100%,9% 100%)}
+.funnel-segment:hover{transform:scale(1.012);filter:brightness(.98)}
+.funnel-segment.active{outline:3px solid rgba(46,28,16,.16);outline-offset:2px}
+.funnel-segment .stage-name{font-size:.78rem;font-weight:900;letter-spacing:.01em}
+.funnel-segment .stage-sub{font-size:.59rem;opacity:.86;margin-top:2px}
+.funnel-segment .stage-count{text-align:right}
+.funnel-segment .stage-count b{display:block;font-size:1.08rem;line-height:1}
+.funnel-segment .stage-count span{font-size:.57rem;opacity:.88}
+.funnel-segment[data-stage="new"]{background:#6b8dc8}
+.funnel-segment[data-stage="contacting"]{background:#5d86b7}
+.funnel-segment[data-stage="qualification"]{background:#5d879a}
+.funnel-segment[data-stage="opportunity"]{background:#5c8f80}
+.funnel-segment[data-stage="quote"]{background:#8a9565}
+.funnel-segment[data-stage="follow_up"]{background:#a58a57}
+.funnel-segment[data-stage="negotiation"]{background:#b87345}
+.funnel-segment[data-stage="won"]{background:#4f9468}
+.funnel-segment[data-stage="lost"]{background:#a45d53}
+.funnel-segment[data-stage="future_follow_up"]{background:#7f768f}
+.pipeline-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.pipeline-kpi{border:1px solid var(--line);border-radius:11px;background:#fbfaf8;padding:10px}
+.pipeline-kpi span{display:block;font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:850}
+.pipeline-kpi b{display:block;font-family:var(--display);font-size:1rem;margin-top:4px}
+.pipeline-stage-list{display:grid;gap:8px;margin-top:12px;max-height:510px;overflow:auto;padding-right:3px}
+.pipeline-op-card{border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.pipeline-op-card.test{border-style:dashed;background:#fffaf4}
+.pipeline-op-card .title{font-weight:850;font-size:.76rem}
+.pipeline-op-card .meta{font-size:.63rem;color:var(--muted);margin-top:4px;line-height:1.45}
+.pipeline-op-card .right{text-align:right}
+.pipeline-op-card .value{font-size:.72rem;font-weight:850}
+.pipeline-priority{display:inline-flex;margin-top:5px;border-radius:999px;padding:3px 7px;font-size:.58rem;font-weight:900}
+.pipeline-priority.p1{background:#ffe9e5;color:#ad4336}.pipeline-priority.p2{background:#fff2d6;color:#926600}.pipeline-priority.p3{background:#edf3f7;color:#65717b}
+.pipeline-empty{border:1px dashed var(--line);border-radius:12px;padding:24px;text-align:center;color:var(--muted);font-size:.72rem}
+.kanban-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(235px,1fr);gap:11px;overflow-x:auto;padding-bottom:9px}
+.kanban-col{background:#f8f6f2;border:1px solid var(--line);border-radius:13px;min-height:300px;padding:10px}
+.kanban-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;font-size:.7rem;font-weight:900}
+.kanban-count{background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 7px;font-size:.59rem;color:var(--muted)}
+.kanban-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.kanban-card .t{font-size:.7rem;font-weight:850}.kanban-card .m{font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px}
+.pipeline-table-wrap{background:#fff;border:1px solid var(--line);border-radius:15px;overflow:hidden}
+.pipeline-filterbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.pipeline-filterbar select,.pipeline-filterbar input{border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.7rem;background:#fff;color:var(--ink)}
+.pipeline-test-toggle{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:.66rem;color:var(--muted)}
+@media(max-width:1100px){.funnel-layout{grid-template-columns:1fr}.pipeline-stage-list{max-height:none}}
+@media(max-width:650px){.funnel-card,.pipeline-detail,.kanban-wrap{padding:12px}.pipeline-kpis{grid-template-columns:1fr}.funnel-segment{min-height:64px;padding:8px 17px}.pipeline-tabs{width:100%;overflow:auto}.pipeline-tab{white-space:nowrap}}
