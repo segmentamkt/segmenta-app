@@ -62,13 +62,13 @@
               <div id="qaChecks" class="qa-checks"></div>
               <div id="qaStageTrack" class="qa-stage-track"></div>
               <div id="qaTaskBox" class="qa-taskbox" style="margin-top:10px"></div>
-              <div class="qa-runbar"><button class="btn primary" id="qaExecuteBtn" type="button">Ejecutar tarea actual</button><button class="btn" id="qaInboxBtn" type="button">Abrir Bandeja</button><button class="btn danger" id="qaDeleteBtn" type="button">Eliminar prueba</button></div>
+              <div class="qa-runbar"><button class="btn primary" id="qaExecuteBtn" type="button">Ejecutar tarea actual</button><button class="btn" id="qaGuardBtn" type="button">Probar bloqueo</button><button class="btn danger" id="qaDeleteBtn" type="button">Eliminar prueba</button></div>
               <div class="qa-note">La prueba crea contactos, conversación, oportunidad, CAP y tareas marcadas como QA. Se excluyen del Dashboard, Pipeline y reportes reales.</div>
             </div>
           </div>
         </section>
         <section class="qa-card qa-chat">
-          <div class="qa-chat-head"><div class="qa-chat-title"><div class="qa-avatar">Q</div><div><div class="qa-chat-name" id="qaChatName">Lead simulado</div><div class="qa-chat-sub" id="qaChatSub">Crea un escenario para comenzar</div></div></div><button class="btn" id="qaRefreshBtn" type="button">↻</button></div>
+          <div class="qa-chat-head"><div class="qa-chat-title"><div class="qa-avatar">Q</div><div><div class="qa-chat-name" id="qaChatName">Lead simulado</div><div class="qa-chat-sub" id="qaChatSub">Crea un escenario para comenzar</div></div></div><div style="display:flex;gap:6px"><button class="btn" id="qaAutoReplyBtn" type="button">✦ Lead automático</button><button class="btn" id="qaRefreshBtn" type="button">↻</button></div></div>
           <div class="qa-messages" id="qaMessages"><div class="qa-empty"><b>Conversa como un lead real</b>Podrás escribir como cliente o como agente y comprobar que el motor exige evidencia antes de avanzar.</div></div>
           <div class="qa-compose">
             <div class="qa-role-toggle"><button type="button" class="qa-role active" data-dir="inbound">Escribir como lead</button><button type="button" class="qa-role" data-dir="outbound">Responder como agente</button></div>
@@ -85,7 +85,8 @@
     document.getElementById('qaSendBtn')?.addEventListener('click',sendMessage);
     document.getElementById('qaRefreshBtn')?.addEventListener('click',()=>window.refreshQaSimulator());
     document.getElementById('qaDeleteBtn')?.addEventListener('click',deleteRun);
-    document.getElementById('qaInboxBtn')?.addEventListener('click',openInbox);
+    document.getElementById('qaGuardBtn')?.addEventListener('click',testGuard);
+    document.getElementById('qaAutoReplyBtn')?.addEventListener('click',autoLeadReply);
     document.getElementById('qaExecuteBtn')?.addEventListener('click',()=>{if(qaRun?.active_task)window.openExecutionTask?.(qaRun.active_task.id)});
     document.querySelectorAll('.qa-role').forEach(btn=>btn.addEventListener('click',()=>{
       qaDirection=btn.dataset.dir;
@@ -123,6 +124,49 @@
       qaRun=j;input.value='';render();
     }catch(err){window.toast?.(err.message)}
   }
+  function automaticLeadText(){
+    const task=qaRun?.active_task?.task_type;
+    const op=qaRun?.opportunity||{};
+    const product=op.product||'el producto';
+    const byTask={
+      contact_client:`Sí, gracias. Estoy interesado en ${product}. Lo necesito pronto y quisiera conocer precio y disponibilidad.`,
+      qualify:`Serían ${op.quantity||2} unidades para ${op.usage_type==='reventa'?'reventa':'uso propio'}. Estoy en ${op.city||'Bogotá'}.`,
+      quote:'Ya vi la información. ¿Cuál sería el total y cuánto tarda la entrega?',
+      follow_up_24h:'Sí, sigo interesado. Si todo está disponible podemos avanzar.',
+      follow_up_48h:'Todavía lo estoy revisando, pero me interesa. ¿Me confirmas disponibilidad?',
+      follow_up_72h:'Podemos hablar de precio final y forma de pago.',
+      negotiation:'Estoy de acuerdo. Si me confirmas el pago y la entrega, cerramos.',
+      future_follow_up:'Hola, retomemos esto. Ya estoy listo para revisarlo otra vez.',
+      close_won:'Confirmo la compra.',
+      close_lost:'Por ahora no voy a comprar.'
+    };
+    return byTask[task]||`Hola, sigo interesado en ${product}. ¿Cuál es el siguiente paso?`;
+  }
+  async function autoLeadReply(){
+    if(!qaRun?.run?.id)return;
+    try{
+      const j=await api('POST','/api/crm-simulator',{action:'message',run_id:qaRun.run.id,direction:'inbound',text:automaticLeadText()});
+      qaRun=j;render();window.toast?.('El lead simulado respondió automáticamente');
+    }catch(err){window.toast?.(err.message)}
+  }
+  async function testGuard(){
+    const op=qaRun?.opportunity;
+    if(!op?.id)return;
+    try{
+      const r=await fetch('/api/crm-commercial',{
+        method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'update_opportunity',id:op.id,stage:'won'})
+      });
+      const j=await r.json().catch(()=>({}));
+      if(r.ok){
+        window.toast?.('⚠ El bloqueo falló: la etapa pudo cambiarse manualmente');
+      }else{
+        window.toast?.('✓ Bloqueo verificado: '+(j.error||'el agente no puede saltar etapas'));
+      }
+      await window.refreshQaSimulator?.();
+    }catch(err){window.toast?.(err.message)}
+  }
+
   async function deleteRun(){
     if(!qaRun?.run?.id)return;
     if(!confirm('¿Eliminar por completo este escenario QA? Se borrarán sus datos sintéticos.'))return;
