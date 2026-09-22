@@ -253,6 +253,11 @@ module.exports = async function handler(req, res) {
       if (action === 'create_quote') {
         const items = Array.isArray(req.body?.items) ? req.body.items : [];
         if (!items.length) return res.status(400).json({ok:false,error:'Agrega al menos un producto'});
+        let sourceOpportunity=null;
+        if(req.body?.opportunity_id){
+          sourceOpportunity=await scopedOne('crm_opportunities',req.body.opportunity_id,orgId);
+          if(!sourceOpportunity)return res.status(404).json({ok:false,error:'Oportunidad no encontrada'});
+        }
         const subtotal = items.reduce((s,i)=>s+Math.max(0,num(i.quantity))*Math.max(0,num(i.unit_price)),0);
         const discount = Math.max(0,num(req.body?.discount));
         const shipping = Math.max(0,num(req.body?.shipping_cost));
@@ -261,7 +266,8 @@ module.exports = async function handler(req, res) {
           organization_id:orgId,contact_id:req.body?.contact_id||null,opportunity_id:req.body?.opportunity_id||null,
           quote_number:sequenceCode('COT'),status:'draft',currency:clean(req.body?.currency,10)||'COP',
           subtotal,discount,shipping_cost:shipping,total,observations:clean(req.body?.observations,5000),
-          valid_until:req.body?.valid_until||null,created_by:session.sub!=='legacy-superadmin'?session.sub:null
+          valid_until:req.body?.valid_until||null,created_by:isUuid(session.sub)?session.sub:null,
+          is_test:Boolean(sourceOpportunity?.is_test)
         })});
         const quote=quoteRows?.[0];
         if (quote) {
@@ -285,7 +291,7 @@ module.exports = async function handler(req, res) {
           organization_id:orgId,contact_id:quote.contact_id,opportunity_id:quote.opportunity_id,quote_id:quote.id,
           order_number:sequenceCode('PED'),currency:quote.currency,subtotal:quote.subtotal,shipping_cost:quote.shipping_cost,total:quote.total,
           payment_status:'pending',fulfillment_status:'pending',status:'active',
-          created_by:session.sub!=='legacy-superadmin'?session.sub:null
+          created_by:isUuid(session.sub)?session.sub:null,is_test:Boolean(quote.is_test)
         })});
         const order=orderRows?.[0];
         if(order && quote.items?.length){
