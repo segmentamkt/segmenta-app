@@ -390,7 +390,7 @@ module.exports = async function handler(req, res) {
         }
         const patch={updated_at:new Date().toISOString()};
         for(const k of ['title','product','city','address','notes','source','usage_type','urgency','lost_reason','lost_reason_note','payment_method','campaign','adset','ad']) if(req.body?.[k]!==undefined) patch[k]=clean(req.body[k],k==='notes'?5000:500);
-        if(req.body?.value!==undefined)patch.value=num(req.body.value);
+        if(['sales','agent'].includes(session?.role) && !isPlatformAdmin(session)){\n          if(req.body?.next_follow_up_at!==undefined){\n            return res.status(403).json({ok:false,error:'La próxima fecha la define la tarea obligatoria del motor comercial.'});\n          }\n          if(req.body?.owner_user_id!==undefined && req.body.owner_user_id!==before.owner_user_id){\n            return res.status(403).json({ok:false,error:'Solo un supervisor puede reasignar el responsable.'});\n          }\n        }\n        if(req.body?.value!==undefined)patch.value=num(req.body.value);
         if(req.body?.quantity!==undefined)patch.quantity=req.body.quantity===''?null:num(req.body.quantity);
         if(req.body?.budget!==undefined)patch.budget=req.body.budget===''?null:num(req.body.budget);
         if(req.body?.priority!==undefined){
