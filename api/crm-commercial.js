@@ -29,6 +29,15 @@ function num(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+async function resolveOwner(orgId, session, requestedOwner) {
+  if (requestedOwner && isUuid(requestedOwner)) return requestedOwner;
+  if (isUuid(session?.sub) && !isPlatformAdmin(session)) return session.sub;
+  const rows = await sb(`crm_memberships?organization_id=eq.${orgId}&status=eq.active&role=in.(owner,sales,agent,admin)&select=user_id,role&order=is_default.desc,created_at.asc&limit=1`);
+  return rows?.[0]?.user_id || null;
+}
 function canManageOrders(session) {
   return isPlatformAdmin(session) || isOrgOwner(session) || ['admin','inventory'].includes(session?.role);
 }
@@ -166,35 +175,70 @@ module.exports = async function handler(req, res) {
       if (action === 'create_opportunity') {
         const title = clean(req.body?.title, 300);
         if (!title) return res.status(400).json({ ok:false, error:'Título requerido' });
+
+        const ownerUserId = await resolveOwner(orgId, session, req.body?.owner_user_id);
+        if (!ownerUserId) return res.status(409).json({ok:false,error:'Todo lead activo debe tener un vendedor responsable.'});
+
+        const priority = ['P1','P2','P3'].includes(String(req.body?.priority || '').toUpperCase())
+          ? String(req.body.priority).toUpperCase()
+          : 'P3';
+        const dueAt = req.body?.next_follow_up_at || new Date(Date.now() + 15 * 60000).toISOString();
+
         const rows = await sb('crm_opportunities', {
           method:'POST', headers:{Prefer:'return=representation'},
           body:JSON.stringify({
             organization_id:orgId,
             contact_id:req.body?.contact_id || null,
             conversation_id:req.body?.conversation_id || null,
-            owner_user_id:req.body?.owner_user_id || null,
+            owner_user_id:ownerUserId,
             title,
-            stage:clean(req.body?.stage,80) || 'new',
+            stage:'new',
+            priority,
             value:num(req.body?.value),
             currency:clean(req.body?.currency,10) || 'COP',
             product:clean(req.body?.product,300),
+            quantity:req.body?.quantity !== undefined && req.body?.quantity !== '' ? num(req.body.quantity) : null,
             city:clean(req.body?.city,200),
+            usage_type:clean(req.body?.usage_type,80),
+            urgency:clean(req.body?.urgency,80),
+            budget:req.body?.budget !== undefined && req.body?.budget !== '' ? num(req.body.budget) : null,
             address:clean(req.body?.address,500),
             notes:clean(req.body?.notes,5000),
-            next_follow_up_at:req.body?.next_follow_up_at || null,
+            next_follow_up_at:dueAt,
             source:clean(req.body?.source,200),
+            campaign:clean(req.body?.campaign,300),
+            adset:clean(req.body?.adset,300),
+            ad:clean(req.body?.ad,300),
             cap_status:'active',
             status:'open',
-            created_by:session.sub !== 'legacy-superadmin' ? session.sub : null
+            created_by:isUuid(session.sub) ? session.sub : null
           })
         });
         const opp = rows?.[0];
         if (opp) {
           await sb('crm_cap',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({
             organization_id:orgId, opportunity_id:opp.id, contact_id:opp.contact_id,
-            status:'active', step:'inicio', sequence:0
+            status:'active', step:'contact_client', next_action:'Contactar cliente', next_action_at:dueAt, sequence:0
           })});
-          await audit(session,orgId,'opportunity.created','opportunity',opp.id,null,opp);
+          await sb('crm_tasks',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({
+            organization_id:orgId,
+            contact_id:opp.contact_id,
+            opportunity_id:opp.id,
+            assigned_user_id:ownerUserId,
+            title:'Contactar cliente',
+            description:'Primera acción obligatoria del motor comercial.',
+            due_at:dueAt,
+            status:'pending',
+            priority:priority==='P1'?'high':priority==='P2'?'normal':'low',
+            task_type:'contact_client',
+            sla_minutes:15,
+            sequence:0,
+            auto_generated:true,
+            automation_key:`execution:${opp.id}:contact_client:0`,
+            created_by:isUuid(session.sub) ? session.sub : null,
+            metadata:{source:'execution_engine_v1'}
+          })});
+          await audit(session,orgId,'opportunity.created','opportunity',opp.id,null,opp,{rule_of_gold:true});
         }
         return res.status(201).json({ok:true,opportunity:opp});
       }
@@ -292,11 +336,30 @@ module.exports = async function handler(req, res) {
         const id=String(req.body?.id||'');
         const before=await scopedOne('crm_opportunities',id,orgId);
         if(!before)return res.status(404).json({ok:false,error:'Oportunidad no encontrada'});
+        if(req.body?.stage!==undefined && clean(req.body.stage,80)!==before.stage){
+          return res.status(409).json({ok:false,error:'La etapa se mueve al completar la tarea comercial obligatoria, no manualmente.'});
+        }
+        if(req.body?.status!==undefined && clean(req.body.status,80)!==before.status){
+          return res.status(409).json({ok:false,error:'El cierre debe realizarse mediante la tarea de cierre correspondiente.'});
+        }
         const patch={updated_at:new Date().toISOString()};
-        for(const k of ['title','stage','product','city','address','notes','source','status']) if(req.body?.[k]!==undefined) patch[k]=clean(req.body[k],k==='notes'?5000:500);
+        for(const k of ['title','product','city','address','notes','source','usage_type','urgency','lost_reason','lost_reason_note','payment_method','campaign','adset','ad']) if(req.body?.[k]!==undefined) patch[k]=clean(req.body[k],k==='notes'?5000:500);
         if(req.body?.value!==undefined)patch.value=num(req.body.value);
-        if(req.body?.next_follow_up_at!==undefined)patch.next_follow_up_at=req.body.next_follow_up_at||null;
-        if(req.body?.owner_user_id!==undefined)patch.owner_user_id=req.body.owner_user_id||null;
+        if(req.body?.quantity!==undefined)patch.quantity=req.body.quantity===''?null:num(req.body.quantity);
+        if(req.body?.budget!==undefined)patch.budget=req.body.budget===''?null:num(req.body.budget);
+        if(req.body?.priority!==undefined){
+          const p=String(req.body.priority||'').toUpperCase();
+          if(!['P1','P2','P3'].includes(p))return res.status(400).json({ok:false,error:'Prioridad inválida'});
+          patch.priority=p;
+        }
+        if(req.body?.next_follow_up_at!==undefined && !req.body.next_follow_up_at){
+          return res.status(409).json({ok:false,error:'Un lead activo no puede quedar sin fecha de próxima acción.'});
+        }
+        if(req.body?.next_follow_up_at!==undefined)patch.next_follow_up_at=req.body.next_follow_up_at;
+        if(req.body?.owner_user_id!==undefined){
+          if(!req.body.owner_user_id)return res.status(409).json({ok:false,error:'Un lead activo no puede quedar sin vendedor responsable.'});
+          patch.owner_user_id=req.body.owner_user_id;
+        }
         const rows=await sb(`crm_opportunities?id=eq.${id}&organization_id=eq.${orgId}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});
         await audit(session,orgId,'opportunity.updated','opportunity',id,before,rows?.[0]||null);
         return res.status(200).json({ok:true,opportunity:rows?.[0]||null});
@@ -345,6 +408,10 @@ module.exports = async function handler(req, res) {
         const id=String(req.body?.id||'');
         const before=await scopedOne('crm_tasks',id,orgId);
         if(!before)return res.status(404).json({ok:false,error:'Tarea no encontrada'});
+        const requestedStatus=clean(req.body?.status,50);
+        if(['done','completed'].includes(requestedStatus)){
+          return res.status(409).json({ok:false,error:'Las tareas comerciales se completan desde “Ejecutar tarea” para validar evidencia y generar la siguiente acción.'});
+        }
         const patch={updated_at:new Date().toISOString()};
         for(const k of ['title','description','status','priority'])if(req.body?.[k]!==undefined)patch[k]=clean(req.body[k],k==='description'?5000:500);
         if(req.body?.due_at!==undefined)patch.due_at=req.body.due_at||null;
