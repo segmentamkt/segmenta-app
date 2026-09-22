@@ -421,6 +421,8 @@
       if(typeof window.toast==='function')window.toast('Cotización creada · seguimiento 24h programado');
       if(typeof window.loadQuotes==='function')await window.loadQuotes();
       await loadExecutionQueue();
+      if(typeof window.refreshQaSimulator==='function')await window.refreshQaSimulator();
+      if(ctx.opportunity?.is_test && typeof window.showPage==='function')window.showPage('qa');
     }catch(err){
       if(typeof window.toast==='function')window.toast(err.message); else alert(err.message);
     }
