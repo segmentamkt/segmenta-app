@@ -1,0 +1,16 @@
+module.exports=async function handler(req,res){
+  try{
+    const proto=(req.headers['x-forwarded-proto']||'https').split(',')[0];
+    const host=req.headers.host;
+    const r=await fetch(`${proto}://${host}/crm-v3.html`);
+    if(!r.ok)return res.status(r.status).send('CRM unavailable');
+    let html=await r.text();
+    html=html.replace('</head>','<link rel="stylesheet" href="/integrations-ui.css?v=20260922-1">\n</head>');
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.setHeader('Cache-Control','no-store');
+    return res.status(200).send(html);
+  }catch(e){
+    console.error('CRM_PAGE_ERROR',e.message);
+    return res.status(500).send('CRM unavailable');
+  }
+};
