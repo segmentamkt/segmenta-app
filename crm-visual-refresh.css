@@ -40,3 +40,39 @@ body{background:#f6f3ef}
 .hidden{display:none!important}
 @media(max-width:900px){.content{padding-top:16px}.page-head{gap:10px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.metric-grid{grid-template-columns:1fr}.page-head{flex-direction:column}.page-head>.btn{width:100%}}
+
+
+/* Inbox viewport fix — keep composer always visible */
+#page-inbox:not(.hidden){
+  display:flex;
+  flex-direction:column;
+  height:calc(100dvh - 66px);
+  min-height:0;
+  overflow:hidden;
+}
+#page-inbox:not(.hidden) .page-head{flex:0 0 auto}
+#page-inbox:not(.hidden) .inbox-shell{
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+}
+#page-inbox .chat-pane{min-height:0;overflow:hidden}
+#page-inbox #chatContent:not(.hidden){
+  display:grid!important;
+  grid-template-rows:66px minmax(0,1fr) auto auto;
+  height:100%!important;
+  min-height:0;
+  overflow:hidden;
+}
+#page-inbox .messages{min-height:0;overflow:auto}
+#page-inbox .chat-compose{
+  position:relative;
+  z-index:4;
+  flex:0 0 auto;
+  box-shadow:0 -5px 18px rgba(46,28,16,.035);
+}
+#page-inbox .chat-foot{flex:0 0 auto}
+@media(max-width:850px){
+  #page-inbox:not(.hidden){height:calc(100dvh - 66px)}
+  #page-inbox:not(.hidden) .inbox-shell{height:auto!important;min-height:0}
+}
