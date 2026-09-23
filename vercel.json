@@ -1,4 +1,15 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        { "type": "host", "value": "segmenta-app.vercel.app" }
+      ],
+      "destination": "https://www.segmenta.online/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/crm", "destination": "/crm.html" },
     { "source": "/host", "destination": "/host-crm.html" }
