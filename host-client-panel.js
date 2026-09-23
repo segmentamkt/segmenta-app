@@ -198,6 +198,8 @@
     const j=await req('/api/crm-host',{action:'preview_client',org_slug:slug});location.href=j.crm_url;
   };
 
+  window.renderHostClientPanels=function(){ensureTabs();renderPanels()};
+
   const oldLoad=window.loadHost;
   if(oldLoad)window.loadHost=async function(...args){const out=await oldLoad.apply(this,args);ensureTabs();renderPanels();return out};
 
