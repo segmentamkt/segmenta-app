@@ -97,6 +97,7 @@ module.exports = async function handler(req, res) {
         dashboard: 'dashboard',
         contacts: 'contacts',
         opportunities: 'crm',
+        pipeline_insights: 'cap',
         quotes: 'quotes',
         orders: 'orders',
         tasks: 'tasks',
@@ -138,6 +139,13 @@ module.exports = async function handler(req, res) {
       if (type === 'opportunities') {
         const rows = await sb(`crm_opportunities?organization_id=eq.${orgId}&is_test=eq.false&select=*,contact:crm_contacts(id,display_name,phone,email,metadata),conversation:crm_conversations(id),cap:crm_cap(*)&order=updated_at.desc`);
         return res.status(200).json({ ok: true, opportunities: rows || [] });
+      }
+      if (type === 'pipeline_insights') {
+        const [history, tasks] = await Promise.all([
+          sb(`crm_stage_history?organization_id=eq.${orgId}&is_test=eq.false&select=opportunity_id,from_stage,to_stage,transition_key,created_at&order=created_at.asc&limit=5000`),
+          sb(`crm_tasks?organization_id=eq.${orgId}&is_test=eq.false&status=in.(pending,in_progress)&select=id,opportunity_id,title,task_type,status,priority,due_at,created_at&order=due_at.asc.nullslast&limit=1000`)
+        ]);
+        return res.status(200).json({ ok: true, stage_history: history || [], open_tasks: tasks || [] });
       }
       if (type === 'quotes') {
         const rows = await sb(`crm_quotes?organization_id=eq.${orgId}&is_test=eq.false&select=*,contact:crm_contacts(id,display_name,phone,email),items:crm_quote_items(*)&order=created_at.desc`);
