@@ -25,9 +25,9 @@
   <div class="side-bottom"><b id="hostEmail">Host</b><span>Acceso global Segmenta</span></div>
 </aside>
 <main class="main">
-<header class="topbar"><h2>Panel Host</h2><span class="pill">Acceso global</span><button class="btn" onclick="logout()">Salir</button></header>
+<header class="topbar"><h2>Panel de gestión</h2><span class="pill">Acceso global</span><button class="btn" onclick="logout()">Salir</button></header>
 <section class="content">
-  <div class="head"><div><div class="eyebrow">Control de plataforma</div><h1>Empresas del CRM</h1><p>Revisa el estado de cada workspace y entra al CRM específico cuando necesites operar o dar soporte.</p></div><div class="actions"><button class="btn" onclick="loadHost()">↻ Actualizar</button><button class="btn primary" onclick="openCreateCompany()">＋ Nueva empresa</button></div></div>
+  <div class="head"><div><div class="eyebrow">Control de plataforma</div><h1>Clientes y workspaces</h1><p>Administra clientes, accesos, pagos, resultados y CRM desde un solo panel.</p></div><div class="actions"><button class="btn" onclick="loadHost()">↻ Actualizar</button><button class="btn primary" onclick="openCreateCompany()">＋ Nueva empresa</button></div></div>
   <div class="stats"><div class="stat"><div class="k">Empresas</div><div class="v" id="sCompanies">0</div></div><div class="stat"><div class="k">Usuarios</div><div class="v" id="sUsers">0</div></div><div class="stat"><div class="k">Conversaciones abiertas</div><div class="v" id="sConversations">0</div></div><div class="stat"><div class="k">Oportunidades</div><div class="v" id="sOpportunities">0</div></div></div>
   <section class="workspace"><div class="workspace-head"><div><h3>Workspaces</h3><span>Cada empresa tiene usuarios, conexiones y datos aislados.</span></div></div><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Dueño</th><th>Usuarios</th><th>Canales</th><th>Integraciones</th><th>Conversaciones</th><th>Oportunidades</th><th>Acción</th></tr></thead><tbody id="orgBody"><tr><td colspan="8" class="empty">Cargando...</td></tr></tbody></table></div></section>
 </section>
@@ -71,6 +71,6 @@ function closeOwner(){document.getElementById('ownerModal').classList.add('hidde
 async function createOwner(e){e.preventDefault();const body={action:'create_user',organization_id:document.getElementById('ownerOrgId').value,display_name:document.getElementById('ownerName').value.trim(),email:document.getElementById('ownerEmail').value.trim(),password:document.getElementById('ownerPassword').value,role:'owner',permissions:{}};const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json();if(!r.ok){alert(j.error||'No fue posible crear el dueño');return}document.getElementById('ownerName').value='';document.getElementById('ownerEmail').value='';document.getElementById('ownerPassword').value='';closeOwner();await loadHost()}
 loadHost();
 </script>
-<script src="/host-client-panel.js?v=20260923-1"></script>
+<script src="/host-client-panel.js?v=20260923-2"></script>
 </body>
 </html>
