@@ -57,7 +57,7 @@ function isPlatformAdmin(session) {
   return session?.platform_role === 'super_admin';
 }
 
-const ALL_MODULES = ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','integrations','users','settings'];
+const ALL_MODULES = ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','payments','reports','integrations','users','settings'];
 
 const ROLE_MODULES = {
   owner: ALL_MODULES,
@@ -66,7 +66,8 @@ const ROLE_MODULES = {
   agent: ['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],
   inventory: ['dashboard','orders','contacts','tasks'],
   editor: ['dashboard','crm','quotes','contacts','tasks'],
-  viewer: ['dashboard']
+  viewer: ['dashboard'],
+  client: ['dashboard','crm','analytics','payments','reports']
 };
 
 function isOrgOwner(session) {
@@ -84,7 +85,7 @@ function hasModuleAccess(session, module, action = 'read') {
   if (!roleModules.includes(module)) return false;
 
   if (action === 'read') return true;
-  if (session?.role === 'viewer') return false;
+  if (['viewer','client'].includes(session?.role)) return false;
 
   const explicitAction = session?.permissions?.actions?.[module]?.[action];
   if (typeof explicitAction === 'boolean') return explicitAction;
