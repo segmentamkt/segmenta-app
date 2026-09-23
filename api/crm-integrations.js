@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { verifySession, canManageIntegrations } = require('./_crm-session');
-const { decryptCredential } = require('./_crm-crypto');
+const { encryptCredential, decryptCredential } = require('./_crm-crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -58,6 +58,84 @@ async function graphRequest(path, accessToken, options = {}) {
 async function safeGraph(path, accessToken) {
   try { return await graphRequest(path, accessToken); }
   catch (_) { return null; }
+}
+
+const AI_PROVIDERS = {
+  openai: {
+    label: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1/models',
+    headers: key => ({ Authorization: `Bearer ${key}`, Accept: 'application/json' })
+  },
+  anthropic: {
+    label: 'Anthropic',
+    endpoint: 'https://api.anthropic.com/v1/models?limit=1',
+    headers: key => ({ 'x-api-key': key, 'anthropic-version': '2023-06-01', Accept: 'application/json' })
+  },
+  gemini: {
+    label: 'Gemini',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+    headers: key => ({ 'x-goog-api-key': key, Accept: 'application/json' })
+  }
+};
+
+function cleanProvider(value) {
+  const p = String(value || '').trim().toLowerCase();
+  return AI_PROVIDERS[p] ? p : null;
+}
+
+function maskKey(key) {
+  const value = String(key || '').trim();
+  if (!value) return null;
+  const suffix = value.slice(-4);
+  return `••••••••${suffix}`;
+}
+
+async function validateAiCredential(provider, key) {
+  const cfg = AI_PROVIDERS[provider];
+  if (!cfg) throw new Error('Proveedor IA no soportado');
+  const value = String(key || '').trim();
+  if (value.length < 10) throw new Error('La llave parece incompleta');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(cfg.endpoint, {
+      method: 'GET',
+      headers: cfg.headers(value),
+      signal: controller.signal
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const providerMessage =
+        data?.error?.message ||
+        data?.error?.details?.[0]?.reason ||
+        data?.message ||
+        `${cfg.label} respondió ${response.status}`;
+      const err = new Error(String(providerMessage).slice(0, 300));
+      err.status = response.status;
+      throw err;
+    }
+
+    const models = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.models)
+        ? data.models
+        : [];
+
+    return {
+      ok: true,
+      provider,
+      provider_label: cfg.label,
+      model_count_sampled: models.length,
+      sample_models: models.slice(0, 5).map(x => x?.id || x?.name).filter(Boolean),
+      validated_at: new Date().toISOString()
+    };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`${cfg.label} no respondió a tiempo`);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function debugToken(accessToken) {
@@ -312,6 +390,132 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       const action = String(req.body?.action || '').trim();
+
+      if (action === 'test_ai_key') {
+        const provider = cleanProvider(req.body?.provider);
+        if (!provider) return res.status(400).json({ ok:false, error:'Proveedor IA no soportado' });
+        const apiKey = String(req.body?.api_key || '').trim();
+        if (!apiKey) return res.status(400).json({ ok:false, error:'Escribe una API key' });
+
+        try {
+          const validation = await validateAiCredential(provider, apiKey);
+          return res.status(200).json({ ok:true, validation });
+        } catch (error) {
+          return res.status(400).json({
+            ok:false,
+            code:'AI_KEY_INVALID',
+            error:`No fue posible validar ${AI_PROVIDERS[provider].label}: ${String(error.message || 'credencial rechazada').slice(0, 300)}`
+          });
+        }
+      }
+
+      if (action === 'save_ai_key') {
+        const provider = cleanProvider(req.body?.provider);
+        if (!provider) return res.status(400).json({ ok:false, error:'Proveedor IA no soportado' });
+        const apiKey = String(req.body?.api_key || '').trim();
+        if (!apiKey) return res.status(400).json({ ok:false, error:'Escribe una API key' });
+
+        let validation;
+        try {
+          validation = await validateAiCredential(provider, apiKey);
+        } catch (error) {
+          return res.status(400).json({
+            ok:false,
+            code:'AI_KEY_INVALID',
+            error:`No fue posible validar ${AI_PROVIDERS[provider].label}: ${String(error.message || 'credencial rechazada').slice(0, 300)}`
+          });
+        }
+
+        const now = new Date().toISOString();
+        const encrypted = encryptCredential(apiKey);
+        const rows = await sb('crm_integrations?on_conflict=organization_id,provider,integration_type,external_account_id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({
+            organization_id: org.id,
+            provider,
+            integration_type: 'api_key',
+            display_name: AI_PROVIDERS[provider].label,
+            external_account_id: 'default',
+            status: 'connected',
+            credential_encrypted: encrypted,
+            connected_by: session.sub !== 'legacy-superadmin' ? session.sub : null,
+            connected_at: now,
+            last_sync_at: now,
+            last_error: null,
+            metadata: {
+              auth_type: 'api_key',
+              key_masked: maskKey(apiKey),
+              key_last4: apiKey.slice(-4),
+              validated_at: validation.validated_at,
+              sample_models: validation.sample_models,
+              validation_source: 'provider_models_endpoint'
+            },
+            updated_at: now
+          })
+        });
+        const integration = rows?.[0] || null;
+        await audit(session, org.id, 'integration.ai_key_connected', 'integration', integration?.id, {
+          id: integration?.id,
+          provider,
+          status: 'connected',
+          metadata: integration?.metadata || {}
+        }, { provider });
+
+        return res.status(200).json({
+          ok:true,
+          integration: integration ? {
+            id: integration.id,
+            provider: integration.provider,
+            integration_type: integration.integration_type,
+            display_name: integration.display_name,
+            status: integration.status,
+            metadata: integration.metadata,
+            connected_at: integration.connected_at,
+            last_sync_at: integration.last_sync_at,
+            last_error: integration.last_error
+          } : null,
+          validation
+        });
+      }
+
+      if (action === 'test_saved_ai_key') {
+        const provider = cleanProvider(req.body?.provider);
+        if (!provider) return res.status(400).json({ ok:false, error:'Proveedor IA no soportado' });
+        const rows = await sb(`crm_integrations?organization_id=eq.${org.id}&provider=eq.${encodeURIComponent(provider)}&integration_type=eq.api_key&external_account_id=eq.default&status=eq.connected&select=id,credential_encrypted,metadata&limit=1`);
+        const integration = rows?.[0];
+        if (!integration?.credential_encrypted) return res.status(404).json({ ok:false, error:'No hay una llave guardada para este proveedor' });
+
+        try {
+          const key = decryptCredential(integration.credential_encrypted);
+          const validation = await validateAiCredential(provider, key);
+          await sb(`crm_integrations?id=eq.${integration.id}&organization_id=eq.${org.id}`, {
+            method:'PATCH',
+            headers:{ Prefer:'return=minimal' },
+            body:JSON.stringify({
+              last_sync_at: validation.validated_at,
+              last_error: null,
+              metadata: {
+                ...(integration.metadata || {}),
+                validated_at: validation.validated_at,
+                sample_models: validation.sample_models
+              },
+              updated_at: validation.validated_at
+            })
+          });
+          return res.status(200).json({ ok:true, validation });
+        } catch (error) {
+          await sb(`crm_integrations?id=eq.${integration.id}&organization_id=eq.${org.id}`, {
+            method:'PATCH',
+            headers:{ Prefer:'return=minimal' },
+            body:JSON.stringify({
+              last_error: String(error.message || 'Validación fallida').slice(0, 300),
+              updated_at: new Date().toISOString()
+            })
+          });
+          return res.status(400).json({ ok:false, error:String(error.message || 'Validación fallida').slice(0, 300) });
+        }
+      }
 
       if (action === 'begin_meta_business') {
         if (!META_LOGIN_CONFIG_ID || !META_APP_SECRET) {
