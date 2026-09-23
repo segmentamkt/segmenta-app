@@ -29,7 +29,7 @@
 @media(max-width:850px){.metric-grid{grid-template-columns:repeat(2,1fr)}.module-grid{grid-template-columns:1fr}.feature-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.admin-grid{grid-template-columns:1fr}.app{grid-template-columns:1fr}.sidebar{position:fixed;left:0;transform:translateX(-100%);transition:.2s;width:238px}.sidebar.open{transform:translateX(0)}.mobile-menu{display:block}.topbar{padding:0 14px}.content{padding:16px}.top-search{display:none}.page-head{flex-direction:column}.inbox-shell{grid-template-columns:1fr;height:calc(100vh - 125px)}.chat-pane{position:absolute;inset:0;z-index:3}.inbox-shell{position:relative}.chat-pane.mobile-hidden{display:none}.stats{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.board{min-width:1800px}.stats{grid-template-columns:1fr 1fr}}
 </style>
-<link rel="stylesheet" href="/integrations-ui.css?v=20260923-7">
+<link rel="stylesheet" href="/integrations-ui.css?v=20260923-8">
 <link rel="stylesheet" href="/crm-execution-ui.css?v=20260923-7">
 <link rel="stylesheet" href="/crm-visual-refresh.css?v=20260923-7">
 <link rel="stylesheet" href="/crm-pipeline-ui.css?v=20260923-10">
@@ -166,21 +166,19 @@
 
 <section class="content hidden" id="page-channels"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Canales</h1><p>Conexiones de mensajería del CRM.</p></div></div><div class="channel-list"><div class="channel-card"><div class="channel-icon fb">f</div><div class="channel-body"><div class="channel-name">Facebook Messenger</div><div class="channel-desc">Página Segmenta-Marketing Digital conectada al webhook y a la Bandeja.</div></div><span class="state ok">Conectado</span></div><div class="channel-card"><div class="channel-icon ig">◎</div><div class="channel-body"><div class="channel-name">Instagram</div><div class="channel-desc">Pendiente de conexión de mensajería.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon wa">◔</div><div class="channel-body"><div class="channel-name">WhatsApp</div><div class="channel-desc">Pendiente de conexión.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon">♪</div><div class="channel-body"><div class="channel-name">TikTok</div><div class="channel-desc">Fase posterior.</div></div><span class="state wait">Próximamente</span></div></div></section>
 <section class="content hidden" id="page-integrations">
-  <div class="page-head"><div><div class="eyebrow">Ecosistema</div><h1>Integraciones</h1><p>Conexiones propias de la empresa activa. Nada se comparte entre empresas.</p></div><button class="btn" onclick="loadIntegrations()">↻ Actualizar</button></div>
-  <div class="feature-grid">
-    <div class="feature-card">
-      <b>Meta Business</b>
-      <p id="metaIntegrationText">Conecta el portafolio empresarial de esta empresa para administrar sus páginas, Instagram y activos autorizados.</p>
-      <div id="metaIntegrationState" style="margin-top:10px"><span class="state off">No conectado</span></div>
-      <div class="inline-actions" style="margin-top:12px"><button class="btn primary" id="metaConnectBtn" onclick="beginMetaBusinessConnection()">Conectar portafolio Meta</button><button class="btn danger hidden" id="metaDisconnectBtn" onclick="disconnectMetaBusiness()">Desconectar</button></div>
-    </div>
-    <div class="feature-card"><b>WhatsApp</b><p>Onboarding multiempresa mediante la plataforma oficial de Meta. Cada empresa conecta su propio WABA y número.</p><span class="state wait">Pendiente de configuración</span></div>
-    <div class="feature-card"><b>Skydropx</b><p>Credenciales, tarifas, guías y seguimiento separados por empresa.</p><span class="state wait">Pendiente</span></div>
-    <div class="feature-card"><b>OpenAI / Anthropic / Gemini</b><p>Cada empresa podrá usar su propio proveedor y credenciales del agente IA.</p><span class="state wait">Pendiente</span></div>
-    <div class="feature-card"><b>Wired / tienda externa</b><p>Webhooks de contactos, cotizaciones, pedidos, clientes y guías hacia la empresa activa.</p><span class="state wait">Pendiente</span></div>
-    <div class="feature-card"><b>Canales detectados</b><p id="integrationChannelsSummary">Cargando canales...</p></div>
-  </div>
+  <div class="integration-topline"><i></i> Conectores · BYO API Key</div>
+  <div class="page-head"><div><h1>Integraciones</h1><p>Conecta canales, correo, comercio e IA con credenciales propias de este workspace.</p></div><button class="btn" onclick="loadIntegrations()">↻ Actualizar</button></div>
+  <div class="integration-summary" id="integrationSummary"><span>Cargando estado…</span></div>
+  <div class="integration-tabs-wrap"><div class="integration-tabs" id="integrationCategoryTabs"></div></div>
+  <div class="integration-cards" id="integrationCards"><div class="integration-loading">Cargando conectores…</div></div>
 </section>
+
+<div class="modal-backdrop hidden" id="integrationConfigModal">
+  <div class="integration-config-card">
+    <div class="integration-config-head"><h2 id="integrationConfigTitle">Configurar integración</h2><button class="icon-btn" type="button" onclick="closeIntegrationConfig()">×</button></div>
+    <div class="integration-config-body" id="integrationConfigBody"></div>
+  </div>
+</div>
 <section class="content hidden" id="page-reports"><div class="page-head"><div><div class="eyebrow">Resultados</div><h1>Reportes</h1><p>Métricas comerciales y adquisición.</p></div></div><div class="placeholder"><h3>Reportes en construcción</h3><p>Se conectarán a la base persistente del CRM.</p></div></section>
 <section class="content hidden" id="page-admin">
   <div class="page-head"><div><div class="eyebrow">Accesos</div><h1>Usuarios</h1><p>Administra únicamente los usuarios de esta empresa y define qué módulos puede usar cada uno.</p></div><button class="btn" onclick="loadAdmin()">↻ Actualizar</button></div>
@@ -515,6 +513,7 @@ fillStatus();render();syncPermissionChecksFromRole();ensureCrmAuth(false);
 <script src="/crm-guided-ui.js?v=20260923-7"></script>
 <script src="/crm-qa-simulator.js?v=20260923-9"></script>
 <script src="/crm-meta-sync-ui.js?v=20260923-7"></script>
+<script src="/crm-integrations-ui.js?v=20260923-1"></script>
 <script src="/crm-sales-os.js?v=20260923-2"></script>
 </body>
 </html>
