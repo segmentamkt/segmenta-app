@@ -318,6 +318,14 @@ async function ensureCrmAuth(loadInboxAfter=false){
       r=await fetch('/api/crm-auth',{cache:'no-store'});j=await r.json();
     }
     crmSession=j;
+    const previewMode=new URLSearchParams(location.search).get('client_preview')==='1';
+    if((j.role==='client'&&!j.platform_admin)||previewMode){
+      const qs=new URLSearchParams();
+      if(j.organization?.slug)qs.set('workspace',j.organization.slug);
+      if(previewMode)qs.set('client_preview','1');
+      location.replace('/portal'+(qs.toString()?'?'+qs.toString():''));
+      return false;
+    }
     hideCrmLogin();
     currentOrgSlug=j.organization?.slug||currentOrgSlug||'segmenta';
     loadLocalLeads();
