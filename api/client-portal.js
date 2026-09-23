@@ -71,13 +71,16 @@ async function portalPayload(orgId) {
     sb(`crm_tasks?organization_id=eq.${orgId}&is_test=eq.false&status=in.(pending,in_progress)&select=id,title,task_type,status,priority,due_at,created_at,opportunity_id&order=due_at.asc.nullslast&limit=200`)
   ]);
 
-  let reports=[],analyses=[],documents=[],services=[];
+  let reports=[],analyses=[],documents=[],services=[],requests=[],announcements=[],files=[];
   if (client?.id) {
-    [reports, analyses, documents, services] = await Promise.all([
+    [reports, analyses, documents, services, requests, announcements, files] = await Promise.all([
       sb(`weekly_reports?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=24`),
       sb(`client_analyses?client_id=eq.${client.id}&select=*&order=published_at.desc&limit=50`),
       sb(`client_documents?client_id=eq.${client.id}&select=*&order=document_date.desc.nullslast,created_at.desc&limit=100`),
-      sb(`client_services?client_id=eq.${client.id}&select=*&order=service_name.asc`)
+      sb(`client_services?client_id=eq.${client.id}&select=*&order=service_name.asc`),
+      sb(`client_requests?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=100`),
+      sb(`client_announcements?client_id=eq.${client.id}&visible_to_client=eq.true&select=*&order=created_at.desc&limit=100`),
+      sb(`client_files?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=100`)
     ]);
   }
   const serviceMap = Object.fromEntries((services || []).map(x => [x.service_key, x]));
@@ -106,7 +109,10 @@ async function portalPayload(orgId) {
     tasks: openTasks || [],
     weekly_reports: reports || [],
     analyses: analyses || [],
-    documents: documents || []
+    documents: documents || [],
+    requests: requests || [],
+    announcements: announcements || [],
+    files: files || []
   };
 }
 
@@ -127,8 +133,56 @@ module.exports = async function handler(req,res){
     }
 
     if (req.method === 'POST') {
-      if (!isPlatformAdmin(session)) return res.status(403).json({ok:false,error:'Solo el Host puede configurar el portal del cliente'});
       const action = String(req.body?.action || '').trim();
+
+      if (action === 'create_request') {
+        const orgId = isPlatformAdmin(session) ? String(req.body?.organization_id || session.organization_id || '').trim() : session.organization_id;
+        if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
+        const client = await clientForOrg(orgId);
+        if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        const rows = await sb('client_requests',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
+          client_id:client.id,organization_id:orgId,
+          created_by_role:isPlatformAdmin(session)?'host':(session.role||'client'),
+          created_by_name:session.email||null,
+          request_type:['error','change','request','content','campaign','other'].includes(req.body?.request_type)?req.body.request_type:'other',
+          title:String(req.body?.title||'').trim()||'Nueva solicitud',
+          description:String(req.body?.description||'').trim()||null,
+          priority:['low','normal','high','urgent'].includes(req.body?.priority)?req.body.priority:'normal',
+          status:'pending'
+        })});
+        return res.status(200).json({ok:true,request:rows?.[0]||null});
+      }
+
+      if (action === 'upload_file') {
+        const orgId = isPlatformAdmin(session) ? String(req.body?.organization_id || session.organization_id || '').trim() : session.organization_id;
+        if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
+        const client = await clientForOrg(orgId);
+        if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        const fileName=String(req.body?.file_name||'archivo').replace(/[^a-zA-Z0-9._-]/g,'_');
+        const mime=String(req.body?.mime_type||'application/octet-stream');
+        const raw=String(req.body?.file_base64||'');
+        if(!raw) return res.status(400).json({ok:false,error:'Archivo requerido'});
+        const buffer=Buffer.from(raw,'base64');
+        if(buffer.length>10485760) return res.status(400).json({ok:false,error:'El archivo supera 10 MB'});
+        const path=`${client.id}/${Date.now()}-${fileName}`;
+        const up=await fetch(`${SUPABASE_URL}/storage/v1/object/client-files/${path}`,{
+          method:'POST',
+          headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,'Content-Type':mime,'x-upsert':'false'},
+          body:buffer
+        });
+        if(!up.ok) throw new Error('No fue posible cargar el archivo');
+        const fileUrl=`${SUPABASE_URL}/storage/v1/object/public/client-files/${path}`;
+        const rows=await sb('client_files',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
+          client_id:client.id,organization_id:orgId,
+          request_id:req.body?.request_id||null,
+          file_name:fileName,file_url:fileUrl,file_type:mime,
+          uploaded_by_role:isPlatformAdmin(session)?'host':(session.role||'client'),
+          uploaded_by_name:session.email||null
+        })});
+        return res.status(200).json({ok:true,file:rows?.[0]||null});
+      }
+
+      if (!isPlatformAdmin(session)) return res.status(403).json({ok:false,error:'Solo el Host puede configurar el portal del cliente'});
 
       if (action === 'upsert_profile') {
         const organizationId = String(req.body?.organization_id || '').trim();
