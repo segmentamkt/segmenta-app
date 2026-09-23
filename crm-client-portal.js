@@ -6,10 +6,13 @@
     google_ads:{label:'Google Ads',icon:'G',group:'Pauta'},
     tiktok_ads:{label:'TikTok Ads',icon:'T',group:'Pauta'},
     organic_strategy:{label:'Estrategia Orgánica',icon:'O',group:'Contenido'},
+    content_recording:{label:'Grabación de contenido',icon:'●',group:'Contenido'},
+    editing:{label:'Edición',icon:'E',group:'Contenido'},
     crm:{label:'CRM',icon:'C',group:'Operación'},
     tasks:{label:'Tareas',icon:'✓',group:'Operación'},
     integrations:{label:'Integraciones',icon:'↔',group:'Operación'},
-    web_landing:{label:'Web / Landing',icon:'W',group:'Activos'},
+    web:{label:'Página web',icon:'W',group:'Activos'},
+    landing:{label:'Landing Page',icon:'L',group:'Activos'},
     reports:{label:'Reportes',icon:'R',group:'Cuenta'},
     payments:{label:'Pagos',icon:'$',group:'Cuenta'}
   };
@@ -22,8 +25,8 @@
   function services(){return portalData?.services||[]}
   function service(key){return services().find(x=>x.service_key===key)||{service_key:key,service_name:SERVICE_UI[key]?.label||key,active_in_plan:false,client_visible:false,status:'inactive',metadata:{}}}
   function visibleServices(){return services().filter(x=>x.client_visible&&SERVICE_UI[x.service_key])}
-  function statusLabel(v){return ({inactive:'Inactivo',setup:'En configuración',active:'Activo',paused:'Pausado',waiting_client:'Esperando información'})[v]||v||'Inactivo'}
-  function statusClass(v){return v==='active'?'active':v==='setup'||v==='waiting_client'?'waiting':v==='paused'?'paused':'inactive'}
+  function statusLabel(v){return ({inactive:'Inactivo',setup:'En configuración',active:'Activo',paused:'Pausado',waiting_client:'Esperando información',under_construction:'En construcción',review:'En revisión',published:'Publicado',completed:'Completado'})[v]||v||'Inactivo'}
+  function statusClass(v){return ['active','published','completed'].includes(v)?'active':['setup','waiting_client','under_construction','review'].includes(v)?'waiting':v==='paused'?'paused':'inactive'}
 
   function ensureShell(){
     const sidebar=document.getElementById('sidebar');if(!sidebar)return;
@@ -36,7 +39,7 @@
       document.getElementById('clientNav')?.before(a);
     }
     const main=document.querySelector('main.main');if(!main)return;
-    const ids=['summary',...Object.keys(SERVICE_UI)];
+    const ids=['summary',...Object.keys(SERVICE_UI),'requests','files','announcements'];
     ids.forEach(p=>{
       if(document.getElementById('page-client-'+p))return;
       const s=document.createElement('section');s.className='client-portal-page hidden';s.id='page-client-'+p;main.appendChild(s);
@@ -45,7 +48,7 @@
 
   function renderNav(){
     const nav=document.getElementById('clientNav');if(!nav)return;
-    const rows=[{id:'summary',label:'Inicio',icon:'⌂'},...visibleServices().map(s=>({id:s.service_key,label:SERVICE_UI[s.service_key].label,icon:SERVICE_UI[s.service_key].icon}))];
+    const rows=[{id:'summary',label:'Inicio',icon:'⌂'},...visibleServices().map(s=>({id:s.service_key,label:SERVICE_UI[s.service_key].label,icon:SERVICE_UI[s.service_key].icon})),{id:'requests',label:'Solicitudes',icon:'!'},{id:'files',label:'Archivos',icon:'▧'},{id:'announcements',label:'Anuncios',icon:'◉'}];
     nav.innerHTML='<div class="client-nav-label">Tu cuenta</div>'+rows.map(x=>`<button class="client-nav-item ${portalPage===x.id?'active':''}" data-client-page="${x.id}"><span class="ico">${x.icon}</span>${esc(x.label)}</button>`).join('');
     nav.querySelectorAll('[data-client-page]').forEach(b=>b.addEventListener('click',()=>showClientPage(b.dataset.clientPage)));
   }
@@ -89,7 +92,8 @@
 
   function payState(){
     const st=portalData?.client?.payment_status||'current';
-    return {cls:st==='overdue'?'overdue':st==='due_soon'?'due':'',label:st==='overdue'?'Pago pendiente':st==='due_soon'?'Pago próximo a vencer':'Suscripción al día'};
+    const labels={overdue:'Pago pendiente',due_soon:'Pago próximo a vencer',courtesy:'Cortesía activa',tbd:'Pago por definir',paid:'Pagado',current:'Suscripción al día'};
+    return {cls:st==='overdue'?'overdue':st==='due_soon'?'due':'',label:labels[st]||'Estado administrativo'};
   }
 
   function summaryHtml(){
@@ -201,24 +205,68 @@
     return `<div class="client-doc"><div class="client-doc-icon">▧</div><div class="client-doc-main"><b>${esc(d.name)}</b><span>${esc(d.document_type)} · ${date(d.document_date||d.created_at)}</span></div>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">Abrir ↗</a>`:''}</div>`;
   }
 
+
+  async function portalPost(body){
+    const r=await fetch('/api/client-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||'No fue posible completar la acción');
+    return j;
+  }
+
+  function requestsHtml(){
+    const rows=portalData?.requests||[];
+    return `<div class="client-welcome"><div><div class="eyebrow">Operación</div><h1>Solicitudes</h1><p>Reporta errores, cambios, campañas o necesidades de contenido directamente a Segmenta.</p></div><button class="client-action" onclick="document.getElementById('requestFormWrap').classList.toggle('hidden')">＋ Nueva solicitud</button></div>
+    <div id="requestFormWrap" class="client-card hidden"><h3>Reportar problema o solicitud</h3><div class="client-form-grid">
+      <label>Tipo<select id="reqType"><option value="error">Error</option><option value="change">Cambio</option><option value="request">Solicitud</option><option value="content">Contenido</option><option value="campaign">Campaña</option><option value="other">Otro</option></select></label>
+      <label>Prioridad<select id="reqPriority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baja</option></select></label>
+      <label class="wide">Título<input id="reqTitle" placeholder="Ej. Cambiar precio del producto"></label>
+      <label class="wide">Descripción<textarea id="reqDescription" rows="4" placeholder="Describe lo que necesitas..."></textarea></label>
+      <label class="wide">Adjuntar captura o archivo<input id="reqFile" type="file" accept="image/*,application/pdf,video/mp4"></label>
+    </div><button class="client-action" onclick="submitClientRequest()">Enviar solicitud</button></div>
+    <div class="client-card"><h3>Historial</h3><div class="client-list">${rows.length?rows.map(x=>`<div class="client-list-item"><div><b>${esc(x.title)}</b><p>${esc(x.request_type)} · ${esc(x.priority)} · ${esc(x.status)}</p><small>${esc(x.description||'')}</small></div><div class="right">${date(x.created_at)}</div></div>`).join(''):'<div class="client-empty">No hay solicitudes registradas.</div>'}</div></div>`;
+  }
+
+  window.submitClientRequest=async function(){
+    try{
+      const created=await portalPost({action:'create_request',request_type:document.getElementById('reqType').value,priority:document.getElementById('reqPriority').value,title:document.getElementById('reqTitle').value,description:document.getElementById('reqDescription').value});
+      const file=document.getElementById('reqFile').files?.[0];
+      if(file){
+        const base64=await new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result).split(',')[1]);fr.onerror=reject;fr.readAsDataURL(file)});
+        await portalPost({action:'upload_file',request_id:created.request?.id||null,file_name:file.name,mime_type:file.type,file_base64:base64});
+      }
+      await load(); showClientPage('requests');
+    }catch(e){alert(e.message)}
+  };
+
+  function filesHtml(){
+    const rows=portalData?.files||[];
+    return `<div class="client-welcome"><div><div class="eyebrow">Recursos</div><h1>Archivos</h1><p>Material compartido entre tu equipo y Segmenta.</p></div></div><div class="client-card"><div class="client-list">${rows.length?rows.map(f=>`<div class="client-doc"><div class="client-doc-icon">▧</div><div class="client-doc-main"><b>${esc(f.file_name)}</b><span>${date(f.created_at)} · ${esc(f.uploaded_by_role||'')}</span></div><a href="${esc(f.file_url)}" target="_blank" rel="noopener">Abrir ↗</a></div>`).join(''):'<div class="client-empty">Aún no hay archivos compartidos.</div>'}</div></div>`;
+  }
+
+  function announcementsHtml(){
+    const rows=portalData?.announcements||[];
+    return `<div class="client-welcome"><div><div class="eyebrow">Novedades</div><h1>Anuncios</h1><p>Actualizaciones importantes sobre campañas, entregables y bloqueos.</p></div></div><div class="client-list">${rows.length?rows.map(a=>`<div class="client-card client-announcement"><b>${esc(a.title)}</b><span>${date(a.created_at)}</span><p>${esc(a.body)}</p></div>`).join(''):'<div class="client-card client-empty">Aún no hay anuncios.</div>'}</div>`;
+  }
+
   function renderPage(){
     if(!portalData)return;
     const page=document.getElementById('page-client-'+portalPage);if(!page)return;
     const renderers={
       summary:summaryHtml,meta_ads:()=>adsHtml('meta_ads'),google_ads:()=>adsHtml('google_ads'),tiktok_ads:()=>adsHtml('tiktok_ads'),
-      organic_strategy:organicHtml,crm:crmHtml,tasks:tasksHtml,integrations:()=>genericServiceHtml('integrations'),
-      web_landing:()=>genericServiceHtml('web_landing'),reports:reportsHtml,payments:paymentsHtml
+      organic_strategy:organicHtml,content_recording:()=>genericServiceHtml('content_recording'),editing:()=>genericServiceHtml('editing'),crm:crmHtml,tasks:tasksHtml,integrations:()=>genericServiceHtml('integrations'),
+      web:()=>genericServiceHtml('web'),landing:()=>genericServiceHtml('landing'),reports:reportsHtml,payments:paymentsHtml,
+      requests:requestsHtml,files:filesHtml,announcements:announcementsHtml
     };
     page.innerHTML=(renderers[portalPage]||summaryHtml)();
   }
 
   function showClientPage(page){
-    if(page!=='summary'&&!service(page).client_visible){page='summary'}
+    if(!['summary','requests','files','announcements'].includes(page)&&!service(page).client_visible){page='summary'}
     portalPage=page;
     document.querySelectorAll('.client-portal-page').forEach(x=>x.classList.add('hidden'));
     const el=document.getElementById('page-client-'+page);if(el)el.classList.remove('hidden');
     renderNav();renderPage();
-    const crumb=document.getElementById('crumbTitle');if(crumb)crumb.textContent=page==='summary'?'Inicio':(SERVICE_UI[page]?.label||page);
+    const crumb=document.getElementById('crumbTitle');if(crumb)crumb.textContent=page==='summary'?'Inicio':({requests:'Solicitudes',files:'Archivos',announcements:'Anuncios'}[page]||SERVICE_UI[page]?.label||page);
   }
   window.showClientPortalPage=showClientPage;
 
