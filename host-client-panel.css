@@ -1,0 +1,26 @@
+/* Segmenta Host — client management structure */
+.host-tabs{display:flex;gap:4px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:4px;width:max-content;max-width:100%;overflow:auto;margin-bottom:18px}
+.host-tab{border:0;background:transparent;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap;cursor:pointer}
+.host-tab.active{background:var(--sidebar);color:#fff}
+.host-tab-panel.hidden{display:none}
+.host-client-grid{display:grid;grid-template-columns:310px minmax(0,1fr);gap:14px;align-items:start}
+.host-client-list{background:#fff;border:1px solid var(--line);border-radius:16px;padding:8px;position:sticky;top:88px}
+.host-client-list-head{padding:8px 9px 11px;font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:900;letter-spacing:.07em;display:flex;justify-content:space-between;gap:8px}
+.host-client-item{width:100%;border:1px solid transparent;background:transparent;border-radius:11px;padding:10px;text-align:left;cursor:pointer;margin-bottom:4px}
+.host-client-item:hover{background:#faf8f5}.host-client-item.active{background:#fff4e6;border-color:#f1d2ab}
+.host-client-item b{display:block;font-size:12px}.host-client-item small{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+.host-client-main{display:grid;gap:12px}
+.host-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:17px}
+.host-card h3{font:700 16px var(--display);margin:0 0 5px}.host-card>p{font-size:11px;color:var(--muted);margin:0 0 13px;line-height:1.5}
+.host-profile-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.host-profile-metric{background:#faf8f5;border:1px solid var(--line);border-radius:10px;padding:10px}
+.host-profile-metric span{display:block;font-size:9px;text-transform:uppercase;color:var(--muted);font-weight:800}.host-profile-metric b{display:block;font-size:13px;margin-top:4px}
+.host-card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.host-users-table{width:100%;border-collapse:collapse}.host-users-table th,.host-users-table td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:11px}.host-users-table th{font-size:9px;text-transform:uppercase;color:var(--muted)}
+.host-role{display:inline-flex;border-radius:999px;padding:4px 7px;background:#f1eee9;font-size:9px;font-weight:900}.host-role.client{background:#eaf7f1;color:#27754f}
+.host-plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.host-plan{background:#fff;border:1px solid var(--line);border-radius:16px;padding:17px}.host-plan h3{font:700 16px var(--display);margin:0}.host-plan .used{font-size:10px;color:var(--muted);margin-top:5px}
+.host-portal-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.host-portal-form .full{grid-column:1/-1}.host-checks{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;border:1px solid var(--line);background:#faf8f5;border-radius:10px;padding:10px}.host-checks label{display:flex;gap:6px;align-items:center;font-size:10px;font-weight:700}.host-checks input{width:14px;height:14px}
+.host-modal-wide{width:min(720px,100%)}
+.host-subsection{border-top:1px solid var(--line);padding-top:13px;margin-top:14px}
+.host-subsection h4{font:700 13px var(--display);margin:0 0 8px}
+@media(max-width:1000px){.host-client-grid{grid-template-columns:1fr}.host-client-list{position:static}.host-profile-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.host-profile-grid,.host-plan-grid,.host-portal-form,.host-checks{grid-template-columns:1fr}.host-portal-form .full{grid-column:auto}}
