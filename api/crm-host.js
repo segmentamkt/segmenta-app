@@ -135,7 +135,7 @@ module.exports = async function handler(req, res) {
         ok: true,
         organization: org,
         crm_url: preview
-          ? `/crm?workspace=${encodeURIComponent(org.slug)}&client_preview=1`
+          ? `/portal?workspace=${encodeURIComponent(org.slug)}&client_preview=1`
           : `/crm?workspace=${encodeURIComponent(org.slug)}&host=1`
       });
     }
