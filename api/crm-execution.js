@@ -404,7 +404,7 @@ async function completeTask(orgId, session, body) {
     method: 'PATCH',
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
-      status: 'completed',
+      status: 'done',
       completed_at: now,
       completed_by: isUuid(session?.sub) ? session.sub : null,
       evidence_type: evidence.evidence_type || null,
