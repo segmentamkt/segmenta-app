@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [organizations, memberships, channels, integrations, conversations, opportunities, tasks, clients, clientServices] = await Promise.all([
+      const [organizations, memberships, channels, integrations, conversations, opportunities, tasks, clients, clientServices, requests] = await Promise.all([
         sb('crm_organizations?status=eq.active&select=id,name,slug,status,crm_path,created_at&order=name.asc'),
         sb('crm_memberships?status=eq.active&select=id,organization_id,email,display_name,role,status,permissions'),
         sb('crm_channels?select=id,organization_id,channel_type,status'),
@@ -45,7 +45,8 @@ module.exports = async function handler(req, res) {
         sb('crm_opportunities?select=id,organization_id,status'),
         sb('crm_tasks?is_test=eq.false&status=in.(pending,in_progress)&select=id,organization_id,due_at,status'),
         sb('clients?select=id,organization_id,name,sector,plan,monthly_fee,status,contact_name,contact_email,contact_phone,next_payment_date,dashboard_url,payment_status,payment_method_label,portal_settings,created_at,updated_at'),
-        sb('client_services?select=id,client_id,service_key,service_name,active_in_plan,client_visible,status,plan_label,notes,metadata,created_at,updated_at')
+        sb('client_services?select=id,client_id,service_key,service_name,active_in_plan,client_visible,status,plan_label,notes,metadata,created_at,updated_at'),
+        sb('client_requests?select=id,organization_id,status,created_at')
       ]);
 
       const usersByOrg = countByOrg(memberships);
@@ -53,6 +54,9 @@ module.exports = async function handler(req, res) {
       const integrationsByOrg = countByOrg((integrations || []).filter(x => x.status === 'connected'));
       const conversationsByOrg = countByOrg((conversations || []).filter(x => x.status !== 'closed'));
       const opportunitiesByOrg = countByOrg((opportunities || []).filter(x => x.status === 'open'));
+      const tasksByOrg = countByOrg(tasks || []);
+      const overdueByOrg = countByOrg((tasks || []).filter(x => x.due_at && new Date(x.due_at) < new Date()));
+      const requestsByOrg = countByOrg((requests || []).filter(x => !['completed'].includes(x.status)));
 
       const owners = {};
       const membersByOrg = {};
@@ -88,7 +92,8 @@ module.exports = async function handler(req, res) {
             conversations: conversationsByOrg[org.id] || 0,
             opportunities: opportunitiesByOrg[org.id] || 0,
             tasks: tasksByOrg[org.id] || 0,
-            overdue_tasks: overdueByOrg[org.id] || 0
+            overdue_tasks: overdueByOrg[org.id] || 0,
+            requests: requestsByOrg[org.id] || 0
           }
         }))
       });
