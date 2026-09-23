@@ -39,7 +39,8 @@
       if(meta){
         const connected=channels.filter(x=>x.status==='connected').length;
         btn.textContent=connected?('↻ Sincronizar canales · '+connected):'↻ Sincronizar canales';
-        if(auto && channels.length===0 && !sessionStorage.getItem('meta_auto_sync_attempted')){
+        const instagramNeedsRepair=channels.some(x=>x.channel_type==='instagram'&&(x.status!=='connected'||x.metadata?.subscription_ok===false));
+        if(auto && (channels.length===0||instagramNeedsRepair) && !sessionStorage.getItem('meta_auto_sync_attempted')){
           sessionStorage.setItem('meta_auto_sync_attempted','1');
           await syncMetaChannels(true);
         }
