@@ -451,15 +451,52 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at,contact:crm_contacts(id,external_user_id,display_name,phone,email,metadata,created_at,updated_at),channel:crm_channels(id,channel_type,external_account_name,external_account_id,integration_id,status,metadata)&order=last_message_at.desc.nullslast&limit=100`);
-    conversations = await Promise.all((conversations || []).map(x => enrichConversation(x, organization.id)));
+    let conversations = await sb(`crm_conversations?organization_id=eq.${organization.id}&select=id,contact_id,channel_id,status,unread_count,last_message_at,created_at,updated_at&order=last_message_at.desc.nullslast&limit=100`);
+    conversations = conversations || [];
+
+    const contactIds = [...new Set(conversations.map(x => x.contact_id).filter(Boolean))];
+    const channelIds = [...new Set(conversations.map(x => x.channel_id).filter(Boolean))];
+
+    let contacts = [];
+    let channels = [];
+    if (contactIds.length) {
+      const filter = contactIds.map(x => encodeURIComponent(x)).join(',');
+      contacts = await sb(`crm_contacts?organization_id=eq.${organization.id}&id=in.(${filter})&select=id,external_user_id,display_name,phone,email,metadata,created_at,updated_at`);
+    }
+    if (channelIds.length) {
+      const filter = channelIds.map(x => encodeURIComponent(x)).join(',');
+      channels = await sb(`crm_channels?organization_id=eq.${organization.id}&id=in.(${filter})&select=id,channel_type,external_account_name,external_account_id,integration_id,status,metadata`);
+    }
+
+    const contactMap = Object.fromEntries((contacts || []).map(x => [x.id, x]));
+    const channelMap = Object.fromEntries((channels || []).map(x => [x.id, x]));
+    conversations = conversations.map(x => ({
+      ...x,
+      contact: contactMap[x.contact_id] || null,
+      channel: channelMap[x.channel_id] || null
+    }));
+
+    const enriched = [];
+    for (const conversation of conversations) {
+      try {
+        enriched.push(await enrichConversation(conversation, organization.id));
+      } catch (error) {
+        console.warn('CRM_INBOX_ENRICH_SKIP', conversation.id, error.message);
+        enriched.push(conversation);
+      }
+    }
+    conversations = enriched;
+
     const ids = conversations.map(x => x.id);
     const latestByConversation = {};
     if (ids.length) {
-      const inFilter = ids.join(',');
-      const messages = await sb(`crm_messages?organization_id=eq.${organization.id}&conversation_id=in.(${encodeURIComponent(inFilter)})&select=conversation_id,direction,message_type,text,attachments,sent_at&order=sent_at.desc&limit=500`);
-      for (const message of messages || []) if (!latestByConversation[message.conversation_id]) latestByConversation[message.conversation_id] = message;
+      const filter = ids.map(x => encodeURIComponent(x)).join(',');
+      const messages = await sb(`crm_messages?organization_id=eq.${organization.id}&conversation_id=in.(${filter})&select=conversation_id,direction,message_type,text,attachments,sent_at&order=sent_at.desc&limit=500`);
+      for (const message of messages || []) {
+        if (!latestByConversation[message.conversation_id]) latestByConversation[message.conversation_id] = message;
+      }
     }
+
     const data = conversations.map(conversation => ({
       ...conversation,
       channel_label: channelName(conversation.channel?.channel_type),
@@ -475,6 +512,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('CRM_INBOX_ERROR', error.message);
-    return res.status(500).json({ ok: false, error: 'Inbox request failed' });
+    return res.status(500).json({ ok: false, error: 'Inbox request failed', detail: isPlatformAdmin(session) ? String(error.message || '').slice(0, 500) : undefined });
   }
 };
