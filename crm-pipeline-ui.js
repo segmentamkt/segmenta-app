@@ -392,9 +392,6 @@
 
   const originalLoadCap=window.loadCap;
   if(originalLoadCap)window.loadCap=async function(...args){await originalLoadCap.apply(this,args);await loadPipelineVisual()};
-  const originalLoadOpp=window.loadOpportunities;
-  if(originalLoadOpp)window.loadOpportunities=async function(...args){const out=await originalLoadOpp.apply(this,args);if(window.currentPage==='cap')await loadPipelineVisual();return out};
-
   function init(){
     const page=document.getElementById('page-cap');
     if(page){
