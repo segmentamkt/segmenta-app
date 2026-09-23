@@ -31,6 +31,32 @@ async function clientForOrg(orgId) {
   return rows?.[0] || null;
 }
 
+const SERVICE_CATALOG = [
+  { key:'meta_ads', name:'Meta Ads' },
+  { key:'google_ads', name:'Google Ads' },
+  { key:'tiktok_ads', name:'TikTok Ads' },
+  { key:'organic_strategy', name:'Estrategia Orgánica' },
+  { key:'crm', name:'CRM' },
+  { key:'tasks', name:'Tareas' },
+  { key:'integrations', name:'Integraciones / Automatización' },
+  { key:'web_landing', name:'Web / Landing Pages' },
+  { key:'reports', name:'Reportes' },
+  { key:'payments', name:'Pagos' }
+];
+
+function defaultServices() {
+  return SERVICE_CATALOG.map(x => ({
+    service_key:x.key,
+    service_name:x.name,
+    active_in_plan:false,
+    client_visible:false,
+    status:'inactive',
+    plan_label:null,
+    notes:null,
+    metadata:{}
+  }));
+}
+
 async function portalPayload(orgId) {
   const org = await orgById(orgId);
   if (!org) throw new Error('Workspace no encontrado');
@@ -41,14 +67,17 @@ async function portalPayload(orgId) {
     sb(`crm_orders?organization_id=eq.${orgId}&is_test=eq.false&select=id,order_number,total,payment_status,status,created_at&order=created_at.desc&limit=100`)
   ]);
 
-  let reports=[],analyses=[],documents=[];
+  let reports=[],analyses=[],documents=[],services=[];
   if (client?.id) {
-    [reports, analyses, documents] = await Promise.all([
+    [reports, analyses, documents, services] = await Promise.all([
       sb(`weekly_reports?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=24`),
       sb(`client_analyses?client_id=eq.${client.id}&select=*&order=published_at.desc&limit=50`),
-      sb(`client_documents?client_id=eq.${client.id}&select=*&order=document_date.desc.nullslast,created_at.desc&limit=100`)
+      sb(`client_documents?client_id=eq.${client.id}&select=*&order=document_date.desc.nullslast,created_at.desc&limit=100`),
+      sb(`client_services?client_id=eq.${client.id}&select=*&order=service_name.asc`)
     ]);
   }
+  const serviceMap = Object.fromEntries((services || []).map(x => [x.service_key, x]));
+  services = defaultServices().map(x => ({ ...x, ...(serviceMap[x.service_key] || {}) }));
 
   const open = (opps || []).filter(x => x.status === 'open');
   const won = (opps || []).filter(x => x.status === 'won' || x.stage === 'won');
@@ -57,7 +86,8 @@ async function portalPayload(orgId) {
     ok: true,
     organization: org,
     client,
-    portal_settings: client?.portal_settings || { results:true, crm:true, payments:true, reports:true },
+    portal_settings: client?.portal_settings || {},
+    services,
     summary: {
       opportunities_open: open.length,
       pipeline_value: open.reduce((s,x)=>s+Number(x.value||0),0),
@@ -135,6 +165,40 @@ module.exports = async function handler(req,res){
           });
         }
         return res.status(200).json({ok:true,client:rows?.[0]||null});
+      }
+
+      if (action === 'save_services') {
+        const clientId = String(req.body?.client_id || '').trim();
+        if (!clientId) return res.status(400).json({ok:false,error:'Cliente requerido'});
+        const requested = Array.isArray(req.body?.services) ? req.body.services : [];
+        const allowedKeys = new Set(SERVICE_CATALOG.map(x => x.key));
+        const now = new Date().toISOString();
+        const rows = [];
+        for (const item of requested) {
+          const key = String(item?.service_key || '').trim();
+          if (!allowedKeys.has(key)) continue;
+          const catalog = SERVICE_CATALOG.find(x => x.key === key);
+          rows.push({
+            client_id: clientId,
+            service_key: key,
+            service_name: catalog.name,
+            active_in_plan: !!item.active_in_plan,
+            client_visible: !!item.client_visible,
+            status: ['inactive','setup','active','paused','waiting_client'].includes(item.status) ? item.status : 'inactive',
+            plan_label: String(item.plan_label || '').trim() || null,
+            notes: String(item.notes || '').trim() || null,
+            metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : {},
+            updated_at: now
+          });
+        }
+        if (rows.length) {
+          await sb('client_services?on_conflict=client_id,service_key', {
+            method:'POST',
+            headers:{Prefer:'resolution=merge-duplicates,return=minimal'},
+            body:JSON.stringify(rows)
+          });
+        }
+        return res.status(200).json({ok:true,services:rows});
       }
 
       if (action === 'publish_analysis') {
