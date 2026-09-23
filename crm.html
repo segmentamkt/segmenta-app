@@ -35,6 +35,7 @@
 <link rel="stylesheet" href="/crm-pipeline-ui.css?v=20260923-10">
 <link rel="stylesheet" href="/crm-qa-simulator.css?v=20260923-8">
 <link rel="stylesheet" href="/crm-sales-os.css?v=20260923-2">
+<link rel="stylesheet" href="/crm-client-portal.css?v=20260923-1">
 </head>
 <body>
 <div class="app">
@@ -187,7 +188,7 @@
       <h3>Nuevo usuario</h3><p>El dueño controla el acceso operativo. Las integraciones permanecen reservadas para el Dueño y el Host de Segmenta.</p>
       <form class="admin-form two" onsubmit="createCrmUser(event)">
         <div class="field"><label>Nombre</label><input id="newUserName" required></div>
-        <div class="field"><label>Rol base</label><select id="newUserRole" onchange="syncPermissionChecksFromRole()"><option value="admin">Administrador</option><option value="sales" selected>Ventas</option><option value="inventory">Inventario / Bodega</option><option value="editor">Editor</option><option value="viewer">Solo lectura</option></select></div>
+        <div class="field"><label>Rol base</label><select id="newUserRole" onchange="syncPermissionChecksFromRole()"><option value="admin">Administrador</option><option value="sales" selected>Ventas</option><option value="inventory">Inventario / Bodega</option><option value="editor">Editor</option><option value="viewer">Solo lectura</option><option value="client">Cliente / Portal</option></select></div>
         <div class="field"><label>Correo</label><input id="newUserEmail" type="email" required></div>
         <div class="field"><label>Contraseña inicial</label><input id="newUserPassword" type="password" minlength="8" required></div>
         <div class="field full"><label>Módulos habilitados</label><div id="permissionChecks" class="permission-grid">
@@ -415,8 +416,8 @@ async function disconnectMetaBusiness(){
     toast('Portafolio desconectado');await loadIntegrations();
   }catch(err){toast(err.message||'No fue posible desconectar')}
 }
-const ROLE_MODULE_DEFAULTS={owner:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','integrations','users','settings'],admin:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','settings'],sales:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],agent:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],inventory:['dashboard','orders','contacts','tasks'],editor:['dashboard','crm','quotes','contacts','tasks'],viewer:['dashboard']};
-function roleLabel(role){return ({owner:'Dueño',admin:'Administrador',sales:'Ventas',inventory:'Inventario / Bodega',editor:'Editor',viewer:'Solo lectura',agent:'Ventas'})[role]||'Usuario'}
+const ROLE_MODULE_DEFAULTS={owner:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','integrations','users','settings'],admin:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','payments','reports','settings'],sales:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],agent:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],inventory:['dashboard','orders','contacts','tasks'],editor:['dashboard','crm','quotes','contacts','tasks'],viewer:['dashboard'],client:['dashboard','crm','analytics','payments','reports']};
+function roleLabel(role){return ({owner:'Dueño',admin:'Administrador',sales:'Ventas',inventory:'Inventario / Bodega',editor:'Editor',viewer:'Solo lectura',client:'Cliente',agent:'Ventas'})[role]||'Usuario'}
 function moduleAllowed(module){
   if(crmSession?.platform_admin||crmSession?.role==='owner')return true;
   if(module==='integrations')return false;
@@ -514,6 +515,7 @@ fillStatus();render();syncPermissionChecksFromRole();ensureCrmAuth(false);
 <script src="/crm-qa-simulator.js?v=20260923-9"></script>
 <script src="/crm-meta-sync-ui.js?v=20260923-7"></script>
 <script src="/crm-integrations-ui.js?v=20260923-3"></script>
-<script src="/crm-sales-os.js?v=20260923-2"></script>
+<script src="/crm-sales-os.js?v=20260923-3"></script>
+<script src="/crm-client-portal.js?v=20260923-1"></script>
 </body>
 </html>
