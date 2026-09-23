@@ -220,8 +220,19 @@
   window.loadIntegrationHub=loadHub;
   window.loadIntegrations=loadHub;
 
-  const oldDisconnect=window.disconnectMetaBusiness;
-  if(oldDisconnect)window.disconnectMetaBusiness=async function(...args){const out=await oldDisconnect.apply(this,args);setTimeout(loadHub,250);return out};
+  window.disconnectMetaBusiness=async function(){
+    const meta=metaIntegration();
+    if(!meta?.id){window.toast?.('No hay un portafolio Meta conectado para desconectar');return}
+    if(!confirm('¿Desconectar el portafolio Meta de este workspace?'))return;
+    try{
+      const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'disconnect',integration_id:meta.id})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'No fue posible desconectar Meta');
+      closeIntegrationConfig();
+      window.toast?.('Portafolio Meta desconectado');
+      await loadHub();
+    }catch(err){window.toast?.(err.message||'No fue posible desconectar Meta')}
+  };
 
   function init(){
     const page=document.getElementById('page-integrations');if(!page)return;
