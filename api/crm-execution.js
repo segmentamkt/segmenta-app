@@ -111,7 +111,7 @@ async function defaultOwner(orgId, session) {
 async function createAutoTask({ orgId, opportunity, type, session, sequence = 0, dueAt = null }) {
   const rule = TASK_RULES[type] || TASK_RULES.manual;
   const assigned = opportunity.owner_user_id || await defaultOwner(orgId, session);
-  if (!assigned) throw new Error('La oportunidad no tiene vendedor responsable');
+  if (!assigned && !opportunity.is_test) throw new Error('La oportunidad no tiene vendedor responsable');
   const rows = await sb('crm_tasks', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
