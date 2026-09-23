@@ -99,7 +99,9 @@ async function loadRunBundle(orgId,run){
 }
 async function createRun(org,session,body){
   const owner=await defaultOwner(org.id,session);
-  if(!owner)throw new Error('No hay un vendedor activo para asignar el lead de prueba.');
+  // QA is synthetic and must be runnable even when the workspace has no real seller yet.
+  // Real opportunities still require an owner; test records may remain unassigned.
+  if(!owner && !isPlatformAdmin(session))throw new Error('No hay un vendedor activo para asignar el lead de prueba.');
   const channel=await ensureQaChannel(org.id);
   if(!channel)throw new Error('No fue posible preparar el canal de simulación.');
 
