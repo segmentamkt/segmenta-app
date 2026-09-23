@@ -292,7 +292,7 @@ function renderLoginContext(){
 function showCrmLogin(){
   renderLoginContext();
   document.body.classList.add('crm-auth-gate');
-  showCrmLogin();
+  document.getElementById('crmLoginModal').classList.remove('hidden');
 }
 function hideCrmLogin(){
   document.body.classList.remove('crm-auth-gate');
@@ -344,7 +344,7 @@ async function loginInbox(e){
 async function logoutCrm(){
   try{await fetch('/api/crm-auth',{method:'DELETE'})}catch(_){}
   inboxAuthenticated=false;crmSession=null;clearInterval(inboxPoll);inboxPoll=null;
-  document.getElementById('crmLoginModal').classList.remove('hidden');
+  showCrmLogin();
 }
 function startInboxPolling(){if(inboxPoll)return;inboxPoll=setInterval(async()=>{if(currentPage!=='inbox'||!inboxAuthenticated)return;await loadInbox(true);if(activeConversationId)await loadConversation(activeConversationId,true)},4000)}
 function updateInboxBadge(n){const b=document.getElementById('inboxNavCount');b.textContent=n||0;b.classList.toggle('hidden',!n)}
