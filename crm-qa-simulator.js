@@ -106,7 +106,11 @@
     try{
       qa=await api('POST','/api/crm-simulator',{action:'create_run',name:'Laura Prueba',phone:'3000000000',product:'Pauta Meta',quantity:1,city:'Bogotá',usage_type:'empresa',urgency:'esta_semana',priority:'P1',value:1500000,initial_message:'Hola, quiero conseguir más clientes con pauta. ¿Me pueden ayudar?'});
       sessionStorage.setItem('segmenta_qa_run',qa.run.id);await refreshExecution();render();
-    }catch(e){window.toast?.(e.message)}finally{busy=false}
+    }catch(e){
+      window.toast?.(e.message);
+      const btn=document.getElementById('qaStart');
+      if(btn){btn.disabled=false;btn.textContent='Iniciar prueba conversacional'}
+    }finally{busy=false}
   }
   function automaticReply(text){
     const q=String(text||'').toLowerCase(),o=qa?.opportunity||{};
