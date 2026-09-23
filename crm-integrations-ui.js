@@ -32,6 +32,7 @@
   function fmtDate(v){if(!v)return 'Sin sincronización';try{return new Date(v).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}catch(_){return String(v)}}
   function groupChannels(type){return (hubState.channels||[]).filter(x=>x.channel_type===type)}
   function metaIntegration(){return (hubState.integrations||[]).find(x=>x.provider==='meta'&&x.integration_type==='business_portfolio'&&x.status!=='disconnected')||null}
+  function aiIntegration(provider){return (hubState.integrations||[]).find(x=>x.provider===provider&&x.integration_type==='api_key'&&x.external_account_id==='default'&&x.status!=='disconnected')||null}
   function connected(rows){return rows.some(x=>x.status==='connected')}
 
   function connectorState(item){
@@ -63,6 +64,26 @@
       const rows=groupChannels('webchat');
       return {status:connected(rows)?'connected':'off',badge:connected(rows)?'CONECTADO':'NO ACTIVO',subtitle:rows[0]?.external_account_name||'Simulador interno',note:rows.length?'Canal de prueba listo':'Aún no se ha inicializado QA.',rows};
     }
+    if(['openai','anthropic','gemini'].includes(item.id)){
+      const ai=aiIntegration(item.id);
+      return {
+        status:ai?.status==='connected'?'connected':ai?.status==='error'?'pending':'off',
+        badge:ai?.status==='connected'?'CONECTADO':ai?.status==='error'?'ERROR':'NO CONECTADO',
+        subtitle:ai?.metadata?.key_masked||'BYO API Key',
+        note:ai?.status==='connected'
+          ? ('Llave validada'+(ai.metadata?.validated_at?' · '+fmtDate(ai.metadata.validated_at):''))
+          : ai?.last_error||'Conecta una llave propia de este workspace.',
+        integration:ai
+      };
+    }
+    if(['openai','anthropic','gemini'].includes(item.id)){
+      if(state.status==='connected'){
+        return `<button class="integration-action" type="button" onclick="openIntegrationConfig('${item.id}')">Configurar</button>
+          <button class="integration-action" type="button" onclick="testSavedAIKey('${item.id}')">Probar conexión</button>
+          <button class="integration-action danger" type="button" onclick="disconnectAIProvider('${item.id}')">Desconectar</button>`;
+      }
+      return `<button class="integration-action primary" type="button" onclick="openIntegrationConfig('${item.id}')">Conectar API key</button>`;
+    }
     if(item.id==='meta'){
       const meta=metaIntegration();
       return {
@@ -80,10 +101,7 @@
       gmail:['Google Workspace','OAuth de Gmail por empresa.'],
       outlook:['Microsoft 365','OAuth de Microsoft por empresa.'],
       wired:['Tienda / ecommerce','Webhooks y API de la tienda.'],
-      skydropx:['Logística','Credenciales y guías por empresa.'],
-      openai:['BYO API Key','Credencial propia del workspace.'],
-      anthropic:['BYO API Key','Credencial propia del workspace.'],
-      gemini:['BYO API Key','Credencial propia del workspace.']
+      skydropx:['Logística','Credenciales y guías por empresa.']
     }[item.id]||['Disponible','Conector por configurar'];
     return {status:'future',badge:'PRÓXIMAMENTE',subtitle:future[0],note:future[1],rows:[]};
   }
@@ -174,7 +192,24 @@
     if(!modal||!title||!body)return;
     title.textContent=item.name;
     let html=`<div class="integration-config-status"><span class="integration-status ${statusClass(st.status)}">${esc(st.badge)}</span><p>${esc(st.note)}</p></div>`;
-    if(id==='meta'&&st.integration){
+    if(['openai','anthropic','gemini'].includes(id)){
+      const labels={openai:'OpenAI API key',anthropic:'Anthropic API key',gemini:'Gemini API / authorization key'};
+      const hints={openai:'La llave se valida contra la API de OpenAI y se cifra antes de guardarse.',anthropic:'La llave se valida contra Claude API y se cifra antes de guardarse.',gemini:'Usa una llave vigente de Gemini API. La llave se valida y se cifra antes de guardarse.'};
+      html+=`<div class="ai-key-form">
+        <label>${esc(labels[id])}</label>
+        <div class="ai-key-input-row">
+          <input id="aiKeyInput" type="password" autocomplete="new-password" spellcheck="false" placeholder="${id==='openai'?'sk-...':id==='anthropic'?'sk-ant-...':'Pega tu llave aquí'}">
+          <button type="button" class="ai-key-eye" onclick="toggleAIKeyVisibility()">Mostrar</button>
+        </div>
+        <p>${esc(hints[id])}</p>
+        <div class="ai-key-feedback" id="aiKeyFeedback"></div>
+        <div class="ai-key-actions">
+          <button type="button" class="integration-action" onclick="testAIKey('${id}')">Probar llave</button>
+          <button type="button" class="integration-action primary" onclick="saveAIKey('${id}')">Probar y guardar</button>
+        </div>
+        ${st.integration?`<div class="ai-key-current"><span>Llave actual</span><b>${esc(st.integration.metadata?.key_masked||'Guardada')}</b><small>Última validación: ${esc(fmtDate(st.integration.metadata?.validated_at||st.integration.last_sync_at))}</small></div>`:''}
+      </div>`;
+    }else if(id==='meta'&&st.integration){
       const m=st.integration;
       html+=`<div class="integration-config-grid">
         <div><span>Estado</span><b>${esc(m.status||'—')}</b></div>
@@ -202,6 +237,67 @@
   window.closeIntegrationConfig=function(){document.getElementById('integrationConfigModal')?.classList.add('hidden')};
   window.addMetaChannel=function(){
     if(typeof window.beginMetaBusinessConnection==='function')window.beginMetaBusinessConnection();
+  };
+
+  window.toggleAIKeyVisibility=function(){
+    const input=document.getElementById('aiKeyInput'),btn=document.querySelector('.ai-key-eye');
+    if(!input)return;
+    const show=input.type==='password';input.type=show?'text':'password';if(btn)btn.textContent=show?'Ocultar':'Mostrar';
+  };
+
+  async function aiKeyRequest(action,provider,apiKey){
+    const body={action,provider};
+    if(apiKey!==undefined)body.api_key=apiKey;
+    const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||'No fue posible validar la llave');
+    return j;
+  }
+
+  window.testAIKey=async function(provider){
+    const input=document.getElementById('aiKeyInput'),feedback=document.getElementById('aiKeyFeedback');
+    const key=input?.value.trim();if(!key){if(feedback)feedback.innerHTML='<span class="bad">Escribe la llave primero.</span>';return}
+    if(feedback)feedback.innerHTML='<span>Validando con el proveedor…</span>';
+    try{
+      const j=await aiKeyRequest('test_ai_key',provider,key);
+      const models=j.validation?.sample_models||[];
+      if(feedback)feedback.innerHTML='<span class="ok">✓ Llave válida'+(models.length?' · '+esc(models.slice(0,2).join(', ')):'')+'</span>';
+    }catch(err){if(feedback)feedback.innerHTML='<span class="bad">'+esc(err.message)+'</span>'}
+  };
+
+  window.saveAIKey=async function(provider){
+    const input=document.getElementById('aiKeyInput'),feedback=document.getElementById('aiKeyFeedback');
+    const key=input?.value.trim();if(!key){if(feedback)feedback.innerHTML='<span class="bad">Escribe la llave primero.</span>';return}
+    if(feedback)feedback.innerHTML='<span>Validando y cifrando…</span>';
+    try{
+      await aiKeyRequest('save_ai_key',provider,key);
+      if(input)input.value='';
+      if(feedback)feedback.innerHTML='<span class="ok">✓ Llave validada y guardada de forma cifrada.</span>';
+      window.toast?.('Llave IA conectada correctamente');
+      await loadHub();
+      setTimeout(()=>openIntegrationConfig(provider),60);
+    }catch(err){if(feedback)feedback.innerHTML='<span class="bad">'+esc(err.message)+'</span>'}
+  };
+
+  window.testSavedAIKey=async function(provider){
+    try{
+      const j=await aiKeyRequest('test_saved_ai_key',provider);
+      const models=j.validation?.sample_models||[];
+      window.toast?.('Conexión válida'+(models.length?' · '+models[0]:''));
+      await loadHub();
+    }catch(err){window.toast?.(err.message||'La llave guardada no pasó la prueba')}
+  };
+
+  window.disconnectAIProvider=async function(provider){
+    const integration=aiIntegration(provider);
+    if(!integration?.id)return;
+    if(!confirm('¿Desconectar la llave de '+provider+' de este workspace?'))return;
+    try{
+      const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'disconnect',integration_id:integration.id})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'No fue posible desconectar');
+      closeIntegrationConfig();window.toast?.('Llave desconectada');await loadHub();
+    }catch(err){window.toast?.(err.message||'No fue posible desconectar')}
   };
 
   async function loadHub(){
