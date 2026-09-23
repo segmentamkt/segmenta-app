@@ -34,13 +34,13 @@
 <link rel="stylesheet" href="/crm-visual-refresh.css?v=20260923-7">
 <link rel="stylesheet" href="/crm-pipeline-ui.css?v=20260923-7">
 <link rel="stylesheet" href="/crm-qa-simulator.css?v=20260923-7">
-<link rel="stylesheet" href="/crm-agent-workbench.css?v=20260923-7">
+<link rel="stylesheet" href="/crm-sales-os.css?v=20260923-1">
 </head>
 <body>
 <div class="app">
 <aside class="sidebar" id="sidebar">
   <div class="logo"><div class="logo-mark">S</div><div>Segmenta<small>CRM CENTRAL</small></div></div>
-  <div class="org-context"><label>Empresa</label><div class="org-context-box"><span id="orgContextName">CRM</span><a id="hostBackLink" class="hidden" href="/host">Panel Host</a></div></div>
+  <div class="org-context"><label>Workspace</label><div class="org-context-box"><span id="orgContextName">CRM</span><a id="hostBackLink" class="hidden" href="/host">Panel Host</a></div></div>
   <div class="nav-label">Inicio</div>
   <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><span class="ico">▶</span>Ejecución</button>
   <button class="nav-item" data-page="inbox" onclick="showPage('inbox',this)"><span class="ico">✉</span>Bandeja<span class="nav-count hidden" id="inboxNavCount">0</span></button>
@@ -298,11 +298,11 @@ async function ensureCrmAuth(loadInboxAfter=false){
     return true
   }catch(_){document.getElementById('crmLoginModal').classList.remove('hidden');return false}
 }
-function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||''}
+function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||'segmenta'}
 function renderCrmSession(){
   const email=crmSession?.email||'CRM';
   document.getElementById('orgContextName').textContent=crmSession?.organization?.name||'CRM';
-  document.getElementById('hostBackLink').classList.toggle('hidden',!crmSession?.platform_admin);
+  document.getElementById('hostBackLink').classList.add('hidden');
   document.getElementById('profileName').textContent=crmSession?.organization?.name||'CRM';
   document.getElementById('profileRole').textContent=(crmSession?.platform_admin?'Host · ':'')+roleLabel(crmSession?.role);
   document.getElementById('profileAvatar').textContent=(crmSession?.organization?.name||email||'S').charAt(0).toUpperCase();
@@ -515,6 +515,6 @@ fillStatus();render();syncPermissionChecksFromRole();ensureCrmAuth(false);
 <script src="/crm-guided-ui.js?v=20260923-7"></script>
 <script src="/crm-qa-simulator.js?v=20260923-7"></script>
 <script src="/crm-meta-sync-ui.js?v=20260923-7"></script>
-<script src="/crm-agent-workbench.js?v=20260923-7"></script>
+<script src="/crm-sales-os.js?v=20260923-1"></script>
 </body>
 </html>
