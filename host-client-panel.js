@@ -108,6 +108,13 @@
         <button class="btn primary" onclick="enterOrg('${esc(o.slug)}')">Abrir CRM interno</button>
       </div>
     </div>
+    <div class="host-card"><h3>Contenido del portal</h3><p>Publica análisis del equipo e informes/facturas visibles para el cliente.</p>
+      <div class="host-card-actions">
+        <button class="btn" onclick="publishClientAnalysis('${o.id}')">＋ Publicar análisis</button>
+        <button class="btn" onclick="addClientDocument('${o.id}','report')">＋ Agregar informe</button>
+        <button class="btn" onclick="addClientDocument('${o.id}','invoice')">＋ Agregar factura</button>
+      </div>
+    </div>
     <div class="host-card"><h3>Módulos del cliente</h3><p>Control independiente del CRM interno de Segmenta.</p>
       <div class="host-profile-grid">
         ${[['results','Resultados'],['crm','CRM'],['payments','Pagos'],['reports','Reportes']].map(([k,l])=>`<div class="host-profile-metric"><span>${l}</span><b>${c.portal_settings?.[k]===false?'Oculto':'Visible'}</b></div>`).join('')}
@@ -176,7 +183,7 @@
       let org=(window.hostData||[]).find(x=>x.id===orgId);
       if(!orgId){
         const created=await req('/api/crm-admin',{action:'create_org',name:document.getElementById('cpName').value.trim()});
-        org=created.organization;orgId=org.id;
+        org=created.organization;orgId=org.id;document.getElementById('cpOrgId').value=orgId;
       }
       const profile=await req('/api/client-portal',{
         action:'upsert_profile',organization_id:orgId,name:document.getElementById('cpName').value.trim(),sector:document.getElementById('cpSector').value.trim(),
@@ -193,6 +200,22 @@
       closeClientPortalModal();await window.loadHost();selectedClientOrg=orgId;setHostTab('clients');
     }catch(err){alert(err.message)}
   }
+
+  window.publishClientAnalysis=async function(orgId){
+    const o=(window.hostData||[]).find(x=>x.id===orgId),client=o?.client;
+    if(!client?.id){alert('Configura primero el perfil del cliente.');return}
+    const title=prompt('Título del análisis:','Resultados y próximos pasos');if(title===null||!title.trim())return;
+    const body=prompt('Escribe el análisis para el cliente:','');if(body===null||!body.trim())return;
+    try{await req('/api/client-portal',{action:'publish_analysis',client_id:client.id,title:title.trim(),body:body.trim()});alert('Análisis publicado.')}catch(err){alert(err.message)}
+  };
+
+  window.addClientDocument=async function(orgId,type){
+    const o=(window.hostData||[]).find(x=>x.id===orgId),client=o?.client;
+    if(!client?.id){alert('Configura primero el perfil del cliente.');return}
+    const name=prompt(type==='invoice'?'Nombre de la factura:':'Nombre del informe:','');if(name===null||!name.trim())return;
+    const url=prompt('URL del documento (opcional):','');if(url===null)return;
+    try{await req('/api/client-portal',{action:'add_document',client_id:client.id,document_type:type,name:name.trim(),document_date:new Date().toISOString().slice(0,10),url:url.trim()});alert('Documento publicado.')}catch(err){alert(err.message)}
+  };
 
   window.previewClient=async function(slug){
     const j=await req('/api/crm-host',{action:'preview_client',org_slug:slug});location.href=j.crm_url;
