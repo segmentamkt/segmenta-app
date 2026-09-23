@@ -4,14 +4,27 @@
     {
       "source": "/:path*",
       "has": [
-        { "type": "host", "value": "segmenta-app.vercel.app" }
+        {
+          "type": "host",
+          "value": "segmenta-app.vercel.app"
+        }
       ],
       "destination": "https://www.segmenta.online/:path*",
       "permanent": true
     }
   ],
   "rewrites": [
-    { "source": "/crm", "destination": "/crm.html" },
-    { "source": "/host", "destination": "/host-crm.html" }
+    {
+      "source": "/crm",
+      "destination": "/crm.html"
+    },
+    {
+      "source": "/host",
+      "destination": "/host-crm.html"
+    },
+    {
+      "source": "/portal",
+      "destination": "/portal.html"
+    }
   ]
 }
