@@ -176,6 +176,8 @@ module.exports = async function handler(req,res){
         if (!clientId) return res.status(400).json({ok:false,error:'Cliente requerido'});
         const requested = Array.isArray(req.body?.services) ? req.body.services : [];
         const allowedKeys = new Set(SERVICE_CATALOG.map(x => x.key));
+        const existingRows = await sb(`client_services?client_id=eq.${encodeURIComponent(clientId)}&select=service_key,metadata`);
+        const existingMetadata = Object.fromEntries((existingRows || []).map(x => [x.service_key, x.metadata || {}]));
         const now = new Date().toISOString();
         const rows = [];
         for (const item of requested) {
@@ -191,7 +193,7 @@ module.exports = async function handler(req,res){
             status: ['inactive','setup','active','paused','waiting_client'].includes(item.status) ? item.status : 'inactive',
             plan_label: String(item.plan_label || '').trim() || null,
             notes: String(item.notes || '').trim() || null,
-            metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : {},
+            metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : (existingMetadata[key] || {}),
             updated_at: now
           });
         }
