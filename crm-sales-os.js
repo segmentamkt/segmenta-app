@@ -198,6 +198,7 @@
     finally{state.busy=false;if(btn){btn.disabled=false;btn.textContent='Completar paso y generar siguiente →'}}
   }
   async function load(preferId){
+    if(window.crmSession?.role==='client'||new URLSearchParams(location.search).get('client_preview')==='1')return;
     const root=ensure();if(root&&!root.innerHTML)root.innerHTML='<div class="so-loading">Preparando tu cola comercial…</div>';
     try{
       const r=await fetch('/api/crm-execution',{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(j.error||'No fue posible cargar ejecución');
@@ -207,7 +208,8 @@
     }catch(e){if(root)root.innerHTML='<div class="so-loading">'+esc(e.message)+'</div>'}
   }
   function applyRole(){
-    const role=window.crmSession?.role,agent=['sales','agent'].includes(role)&&!window.crmSession?.platform_admin;
+    const role=window.crmSession?.role;if(role==='client'||new URLSearchParams(location.search).get('client_preview')==='1')return;
+    const agent=['sales','agent'].includes(role)&&!window.crmSession?.platform_admin;
     document.body.classList.toggle('sales-os-agent',agent);
     const host=document.getElementById('hostBackLink');if(host)host.classList.add('hidden');
     const org=document.getElementById('orgContextName');if(org&&window.crmSession?.organization?.name)org.textContent=window.crmSession.organization.name;
