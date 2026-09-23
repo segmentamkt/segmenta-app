@@ -24,3 +24,28 @@
 .host-subsection h4{font:700 13px var(--display);margin:0 0 8px}
 @media(max-width:1000px){.host-client-grid{grid-template-columns:1fr}.host-client-list{position:static}.host-profile-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.host-profile-grid,.host-plan-grid,.host-portal-form,.host-checks{grid-template-columns:1fr}.host-portal-form .full{grid-column:auto}}
+
+.host-card-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.host-card-title-row p{font-size:11px;color:var(--muted);margin:3px 0 0}
+.host-service-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.host-service-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+.host-service-card.inactive{background:#fbfaf8;opacity:.9}
+.host-service-card.active{border-color:#dbc6ae}
+.host-service-top{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:start}
+.host-service-icon{width:34px;height:34px;border-radius:9px;background:#2c2119;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:900;flex:0 0 34px}
+.host-service-top b{display:block;font-size:12px}.host-service-top small{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.host-service-card>p{font-size:10px;color:var(--muted);line-height:1.45;margin:9px 0}
+.host-status{display:inline-flex;border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;white-space:nowrap}
+.host-status.good{background:#e8f6ee;color:#26734d}.host-status.wait{background:#fff3dd;color:#9a650a}.host-status.pause{background:#f4eee8;color:#8d6549}.host-status.off{background:#efedea;color:#777069}
+.host-service-flags{display:flex;gap:5px;flex-wrap:wrap}.host-service-flags span{font-size:8px;border-radius:999px;padding:4px 6px;background:#efedea;color:#756e68;font-weight:800}.host-service-flags span.on{background:#e8f6ee;color:#26734d}
+.host-service-metrics{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.host-service-metrics span{font-size:9px;color:var(--muted);background:#faf8f5;border:1px solid var(--line);border-radius:7px;padding:5px 6px}
+.host-client-config{padding:0!important;overflow:hidden}.host-config-head{padding:18px 20px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}.host-config-head h2{margin:0}.host-config-head p{margin:3px 0 0;color:var(--muted);font-size:11px}
+.host-config-scroll{max-height:72vh;overflow:auto;padding:0 20px 18px}.host-config-actions{padding:12px 20px;border-top:1px solid var(--line);background:#fff}
+.host-subsection.first{border-top:0;margin-top:0;padding-top:16px}.host-help{font-size:10px;color:var(--muted);margin:0 0 10px}
+.host-service-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.host-service-edit{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfaf8;display:grid;gap:8px}
+.host-service-edit-head{display:flex;align-items:flex-start;gap:8px}.host-service-edit-head b{display:block;font-size:11px}.host-service-edit-head small{display:block;font-size:9px;color:var(--muted);line-height:1.35;margin-top:2px}
+.host-service-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px}.host-service-controls select{grid-column:1/-1;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff;font-size:10px}
+.host-toggle{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:800}.host-toggle input{width:14px!important;height:14px!important;min-width:14px!important;margin:0}
+.host-service-edit>input,.host-service-edit>textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:#fff;font-size:10px}.host-service-edit>textarea{min-height:54px;resize:vertical}
+@media(max-width:850px){.host-service-grid,.host-service-editor-grid{grid-template-columns:1fr}}
