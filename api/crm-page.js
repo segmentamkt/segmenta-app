@@ -88,9 +88,9 @@ module.exports=async function handler(req,res){
 })();
 </script>`;
 
-    html=html.replace('</head>','<link rel="stylesheet" href="/integrations-ui.css?v=20260922-2">\\n<link rel="stylesheet" href="/crm-execution-ui.css?v=20260922-2">\\n<link rel="stylesheet" href="/crm-visual-refresh.css?v=20260923-1">\\n<link rel="stylesheet" href="/crm-pipeline-ui.css?v=20260922-1">\\n<link rel="stylesheet" href="/crm-qa-simulator.css?v=20260922-1">\\n</head>');
+    html=html.replace('</head>','<link rel="stylesheet" href="/integrations-ui.css?v=20260922-2">\\n<link rel="stylesheet" href="/crm-execution-ui.css?v=20260922-2">\\n<link rel="stylesheet" href="/crm-visual-refresh.css?v=20260923-1">\\n<link rel="stylesheet" href="/crm-pipeline-ui.css?v=20260922-1">\\n<link rel="stylesheet" href="/crm-qa-simulator.css?v=20260922-1">\\n<link rel="stylesheet" href="/crm-agent-workbench.css?v=20260923-1">\\n</head>');
 
-    html=html.replace('</body>','<script src="/crm-execution-ui.js?v=20260922-3"></script>\\n<script src="/crm-pipeline-ui.js?v=20260922-1"></script>\\n<script src="/crm-guided-ui.js?v=20260922-1"></script>\\n<script src="/crm-qa-simulator.js?v=20260922-2"></script>\\n<script src="/crm-meta-sync-ui.js?v=20260922-1"></script>\\n'+replyInline+'\\n</body>');
+    html=html.replace('</body>','<script src="/crm-execution-ui.js?v=20260922-3"></script>\\n<script src="/crm-pipeline-ui.js?v=20260922-1"></script>\\n<script src="/crm-guided-ui.js?v=20260922-1"></script>\\n<script src="/crm-qa-simulator.js?v=20260922-2"></script>\\n<script src="/crm-meta-sync-ui.js?v=20260922-1"></script>\\n<script src="/crm-agent-workbench.js?v=20260923-1"></script>\\n'+replyInline+'\\n</body>');
 
     res.setHeader('Content-Type','text/html; charset=utf-8');
     res.setHeader('Cache-Control','no-store, max-age=0');
