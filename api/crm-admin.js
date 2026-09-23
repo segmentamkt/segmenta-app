@@ -56,7 +56,7 @@ function canManageOrg(session, organizationId) {
   return canManageUsers(session) && session?.organization_id === organizationId;
 }
 
-const ALLOWED_ROLES = ['owner','admin','sales','inventory','editor','viewer','agent'];
+const ALLOWED_ROLES = ['owner','admin','sales','inventory','editor','viewer','agent','client'];
 
 async function audit(session, organizationId, action, entityType, entityId, beforeData = null, afterData = null, metadata = {}) {
   try {
