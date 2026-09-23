@@ -15,7 +15,7 @@
     close_lost:{title:'Cerrar perdido',objective:'Registrar por qué se perdió para aprender y no perseguir leads muertos.',script:'Selecciona un motivo real. Si eliges otro, explica brevemente qué ocurrió.'},
     call:{title:'Realizar llamada',objective:'Resolver por llamada lo que no avanza por chat.',script:'Haz la llamada y registra un resumen accionable.'}
   };
-  let state={data:null,task:null,chat:null,outcome:null,busy:false};
+  let state={data:null,task:null,chat:null,outcome:null,busy:false,quoteCreated:false};
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
   function money(v){try{return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0)}catch(_){return '$'+Number(v||0)}}
@@ -86,7 +86,10 @@
     return '';
   }
   function actionHelper(t){
-    if(t?.task_type==='quote')return '<button type="button" class="so-secondary" id="soGoQuotes">Abrir cotizaciones</button>';
+    if(t?.task_type==='quote'){
+      const o=t.opportunity||{},qty=Math.max(1,Number(o.quantity)||1),total=Math.max(0,Number(o.value)||0),unit=total?Math.round(total/qty):0;
+      return `<div class="so-row"><div class="so-field"><label>Cantidad</label><input id="soQuoteQty" type="number" min="1" value="${qty}"></div><div class="so-field"><label>Valor unitario</label><input id="soQuoteUnit" type="number" min="0" value="${unit}"></div></div><button type="button" class="so-secondary" id="soCreateQuote">${state.quoteCreated?'✓ Cotización creada':'Crear cotización vinculada'}</button>`;
+    }
     return '';
   }
   function render(){
@@ -128,11 +131,11 @@
     send?.addEventListener('click',sendMessage);comp?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
     document.getElementById('soComplete')?.addEventListener('click',complete);
     document.getElementById('soSaveQualification')?.addEventListener('click',saveQualification);
-    document.getElementById('soGoQuotes')?.addEventListener('click',()=>window.showPage?.('quotes'));
+    document.getElementById('soCreateQuote')?.addEventListener('click',createQuote);
     setTimeout(()=>{const m=document.getElementById('soMessages');if(m)m.scrollTop=m.scrollHeight},0);
   }
   async function selectTask(id){
-    state.task=(state.data?.queue||[]).find(x=>x.id===id)||state.task;state.chat=null;state.outcome=null;render();await loadChat();
+    state.task=(state.data?.queue||[]).find(x=>x.id===id)||state.task;state.chat=null;state.outcome=null;state.quoteCreated=false;render();await loadChat();
   }
   async function loadChat(){
     const id=state.task?.opportunity?.conversation_id;
@@ -168,6 +171,17 @@
     }catch(e){const er=document.getElementById('soError');if(er)er.textContent=e.message}
     finally{if(btn){btn.disabled=false;btn.textContent='Guardar datos de calificación'}}
   }
+  async function createQuote(){
+    if(state.busy||!state.task?.opportunity?.id)return;
+    const o=state.task.opportunity,qty=Math.max(1,Number(document.getElementById('soQuoteQty')?.value)||1),unit=Math.max(0,Number(document.getElementById('soQuoteUnit')?.value)||0);
+    const er=document.getElementById('soError');if(er)er.textContent='';state.busy=true;
+    try{
+      const r=await fetch('/api/crm-commercial',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_quote',opportunity_id:o.id,items:[{description:o.product||'Servicio',quantity:qty,unit_price:unit}],observations:'Creada desde Ejecución guiada'})}),j=await r.json();
+      if(!r.ok)throw new Error(j.error||'No fue posible crear la cotización');
+      state.quoteCreated=true;window.toast?.('Cotización vinculada creada');render();
+    }catch(e){if(er)er.textContent=e.message}
+    finally{state.busy=false}
+  }
   async function complete(){
     if(state.busy||!state.task)return;
     const t=state.task,body={action:'complete_task',task_id:t.id,completion_note:document.getElementById('soNote')?.value||''};
@@ -189,7 +203,7 @@
       const r=await fetch('/api/crm-execution',{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(j.error||'No fue posible cargar ejecución');
       state.data=j;
       state.task=preferId?(j.queue||[]).find(x=>x.id===preferId)||j.next_task:j.next_task;
-      state.outcome=null;state.chat=null;render();await loadChat();
+      state.outcome=null;state.chat=null;state.quoteCreated=false;render();await loadChat();
     }catch(e){if(root)root.innerHTML='<div class="so-loading">'+esc(e.message)+'</div>'}
   }
   function applyRole(){
