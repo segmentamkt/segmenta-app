@@ -229,21 +229,27 @@
   }
   function renderFunnel(){
     const root=document.getElementById('pipelineFunnel');if(!root)return;
-    const chunks=[];
+    const chunks=[],base=reachedCount('new');
     STAGES.forEach((s,i)=>{
-      const st=stageStats(s.key),width=funnelWidth(s.key);
-      chunks.push(`<div class="pipeline-funnel-stage ${selectedStage===s.key?'active':''}" data-stage="${s.key}" style="width:${width}%" onclick="pipelineSelectStage('${s.key}')">
-        <div><div class="stage-k">Etapa ${i+1}</div><div class="stage-name">${esc(s.label)}</div><div class="stage-sub">${money(st.value)} · ${humanDuration(st.avgAge)} promedio actual</div></div>
-        <div class="stage-right"><b>${st.count}</b><span>${st.reached} llegaron · ${st.conversion}% avance</span></div>
-      </div>`);
+      const st=stageStats(s.key);
+      chunks.push(`<button type="button" class="pipeline-funnel-stage ${selectedStage===s.key?'active':''}" data-stage="${s.key}" onclick="pipelineSelectStage('${s.key}')">
+        <div class="stage-k">Etapa ${i+1}</div>
+        <div class="stage-name">${esc(s.label)}</div>
+        <div class="stage-count-row"><b>${st.count}</b><span>actuales</span></div>
+        <div class="stage-sub">${money(st.value)} · ${humanDuration(st.avgAge)} prom.</div>
+        <div class="stage-reached">${st.reached} llegaron · ${st.conversion}% avance</div>
+      </button>`);
       if(i<STAGES.length-1){
         const next=STAGES[i+1],conv=conversionFor(next.key);
-        chunks.push(`<div class="pipeline-funnel-connector"><span>↓ ${conv}% llegó a ${esc(next.label)}</span></div>`);
+        chunks.push(`<div class="pipeline-funnel-connector" aria-label="${conv}% llegó a ${esc(next.label)}"><span>${conv}%</span><i>→</i></div>`);
       }
     });
+    root.classList.toggle('is-empty',base===0);
     root.innerHTML=chunks.join('');
     const m=overallMetrics(),foot=document.getElementById('pipelineFunnelFoot');
-    if(foot)foot.innerHTML=`<span><b>${m.lost.length}</b> oportunidades cerradas como perdidas</span><span><b>${m.won.length}</b> ventas ganadas</span><span>Retención calculada con historial real de etapas</span>`;
+    if(foot)foot.innerHTML=base===0
+      ? `<span><b>Aún no hay oportunidades reales en el periodo.</b> El embudo queda visible como mapa del proceso, sin ocupar toda la pantalla.</span><span>QA excluido</span>`
+      : `<span><b>${m.lost.length}</b> oportunidades cerradas como perdidas</span><span><b>${m.won.length}</b> ventas ganadas</span><span>Retención calculada con historial real de etapas</span>`;
   }
 
   function bottleneck(){
