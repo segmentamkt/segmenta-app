@@ -36,14 +36,15 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [organizations, memberships, channels, integrations, conversations, opportunities, clients] = await Promise.all([
+      const [organizations, memberships, channels, integrations, conversations, opportunities, clients, clientServices] = await Promise.all([
         sb('crm_organizations?status=eq.active&select=id,name,slug,status,crm_path,created_at&order=name.asc'),
         sb('crm_memberships?status=eq.active&select=id,organization_id,email,display_name,role,status,permissions'),
         sb('crm_channels?select=id,organization_id,channel_type,status'),
         sb('crm_integrations?select=id,organization_id,provider,status'),
         sb('crm_conversations?select=id,organization_id,status'),
         sb('crm_opportunities?select=id,organization_id,status'),
-        sb('clients?select=id,organization_id,name,sector,plan,monthly_fee,status,contact_name,contact_email,contact_phone,next_payment_date,dashboard_url,payment_status,payment_method_label,portal_settings,created_at,updated_at')
+        sb('clients?select=id,organization_id,name,sector,plan,monthly_fee,status,contact_name,contact_email,contact_phone,next_payment_date,dashboard_url,payment_status,payment_method_label,portal_settings,created_at,updated_at'),
+        sb('client_services?select=id,client_id,service_key,service_name,active_in_plan,client_visible,status,plan_label,notes,metadata,created_at,updated_at')
       ]);
 
       const usersByOrg = countByOrg(memberships);
@@ -62,7 +63,15 @@ module.exports = async function handler(req, res) {
           display_name: m.display_name
         };
       }
-      const clientsByOrg = Object.fromEntries((clients || []).filter(x => x.organization_id).map(x => [x.organization_id, x]));
+      const servicesByClient = {};
+      for (const s of clientServices || []) {
+        if (!servicesByClient[s.client_id]) servicesByClient[s.client_id] = [];
+        servicesByClient[s.client_id].push(s);
+      }
+      const clientsByOrg = Object.fromEntries((clients || []).filter(x => x.organization_id).map(x => [
+        x.organization_id,
+        { ...x, services: servicesByClient[x.id] || [] }
+      ]));
 
       return res.status(200).json({
         ok: true,
