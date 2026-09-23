@@ -37,7 +37,7 @@
     page.id='page-qa';page.className='content hidden qa-page';
     page.innerHTML=`
       <div class="qa-hero">
-        <div><div class="eyebrow">Control de calidad</div><h1>Simulador de lead</h1><p>Entra como un cliente falso, conversa con el CRM y verifica que ninguna etapa pueda saltarse.</p></div>
+        <div><div class="eyebrow">Control de calidad</div><h1>Lead automático de prueba</h1><p>Escribe como vendedor. El cliente simulado responde solo y el CRM debe obligarte a completar cada paso en orden.</p></div>
         <span class="qa-badge">◈ MODO QA · no afecta métricas reales</span>
       </div>
       <div class="qa-grid">
@@ -119,15 +119,30 @@
   async function sendMessage(){
     if(!qaRun?.run?.id)return;
     const input=document.getElementById('qaMessageInput'),text=input.value.trim();if(!text)return;
+    const btn=document.getElementById('qaSendBtn');
     try{
-      const j=await api('POST','/api/crm-simulator',{action:'message',run_id:qaRun.run.id,direction:qaDirection,text});
+      if(btn){btn.disabled=true;btn.textContent='Enviando…'}
+      const j=await api('POST','/api/crm-simulator',{action:'message',run_id:qaRun.run.id,direction:'outbound',text});
       qaRun=j;input.value='';render();
+      await autoLeadReply(true);
+      window.toast?.('Lead automático respondió · continúa el flujo');
     }catch(err){window.toast?.(err.message)}
+    finally{if(btn){btn.disabled=false;btn.textContent='Enviar'}}
   }
   function automaticLeadText(){
     const task=qaRun?.active_task?.task_type;
     const op=qaRun?.opportunity||{};
-    const product=op.product||'el producto';
+    const persona=qaRun?.run?.persona||{};
+    const product=op.product||persona.product||'el producto';
+    const latest=[...(qaRun?.messages||[])].reverse().find(m=>m.direction==='outbound');
+    const asked=String(latest?.text||'').toLowerCase();
+    if(/ciudad|dónde|ubicaci/.test(asked))return 'Estoy en '+(op.city||persona.city||'Bogotá')+'.';
+    if(/cantidad|cuánt/.test(asked))return 'Necesito '+(op.quantity||persona.quantity||2)+' unidades.';
+    if(/uso|reventa|empresa|propio/.test(asked))return op.usage_type==='reventa'?'Es para reventa.':op.usage_type==='empresa'?'Es para mi empresa.':'Es para uso propio.';
+    if(/urgencia|cuándo|para cuándo|fecha/.test(asked))return persona.urgency==='hoy'?'Lo necesito hoy.':persona.urgency==='este_mes'?'Lo necesito este mes.':'Lo necesito esta semana.';
+    if(/presupuesto/.test(asked))return 'Tengo un presupuesto aproximado de '+fmt(persona.value||op.value||500000)+'.';
+    if(/reuni|llamada|agenda|horario/.test(asked))return 'Sí, puedo agendar. Prefiero mañana en la tarde.';
+    if(/precio|cotiza|propuesta|total/.test(asked))return 'Perfecto. Envíame el total final y el tiempo de entrega para revisarlo.';
     const byTask={
       contact_client:`Sí, gracias. Estoy interesado en ${product}. Lo necesito pronto y quisiera conocer precio y disponibilidad.`,
       qualify:`Serían ${op.quantity||2} unidades para ${op.usage_type==='reventa'?'reventa':'uso propio'}. Estoy en ${op.city||'Bogotá'}.`,
@@ -142,11 +157,11 @@
     };
     return byTask[task]||`Hola, sigo interesado en ${product}. ¿Cuál es el siguiente paso?`;
   }
-  async function autoLeadReply(){
+  async function autoLeadReply(silent=false){
     if(!qaRun?.run?.id)return;
     try{
       const j=await api('POST','/api/crm-simulator',{action:'message',run_id:qaRun.run.id,direction:'inbound',text:automaticLeadText()});
-      qaRun=j;render();window.toast?.('El lead simulado respondió automáticamente');
+      qaRun=j;render();if(!silent)window.toast?.('El lead simulado respondió automáticamente');
     }catch(err){window.toast?.(err.message)}
   }
   async function testGuard(){
@@ -189,7 +204,7 @@
     if(!active){
       document.getElementById('qaChatName').textContent='Lead simulado';
       document.getElementById('qaChatSub').textContent='Crea un escenario para comenzar';
-      document.getElementById('qaMessages').innerHTML='<div class="qa-empty"><b>Conversa como un lead real</b>Podrás escribir como cliente o como agente y comprobar que el motor exige evidencia antes de avanzar.</div>';
+      document.getElementById('qaMessages').innerHTML='<div class="qa-empty"><b>Prueba como vendedor real</b>Crea un escenario, escribe tu respuesta y el lead simulado contestará automáticamente.</div>';
       return;
     }
     const run=qaRun.run,ct=qaRun.contact||{},op=qaRun.opportunity||{},task=qaRun.active_task;
