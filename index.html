@@ -951,7 +951,7 @@ loadDB();
 </html>"></iframe>
 </div>
 <script>
-function openPortal(){document.getElementById('portalOverlay').style.display='flex';document.body.style.overflow='hidden';}
+function openPortal(){window.location.href='/crm';}
 function closePortal(){document.getElementById('portalOverlay').style.display='none';document.body.style.overflow='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePortal();});
 </script>
