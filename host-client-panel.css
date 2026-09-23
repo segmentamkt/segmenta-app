@@ -49,3 +49,9 @@
 .host-toggle{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:800}.host-toggle input{width:14px!important;height:14px!important;min-width:14px!important;margin:0}
 .host-service-edit>input,.host-service-edit>textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:#fff;font-size:10px}.host-service-edit>textarea{min-height:54px;resize:vertical}
 @media(max-width:850px){.host-service-grid,.host-service-editor-grid{grid-template-columns:1fr}}
+
+
+.host-ops-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.host-ops-strip span{border:1px solid var(--line);background:#fbfaf7;border-radius:10px;padding:10px;font-size:10px;color:var(--muted)}
+.host-ops-strip b{display:block;font:700 17px var(--display);color:var(--ink);margin-bottom:2px}
+@media(max-width:900px){.host-ops-strip{grid-template-columns:repeat(2,1fr)}}
