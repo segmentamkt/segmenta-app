@@ -36,13 +36,14 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [organizations, memberships, channels, integrations, conversations, opportunities] = await Promise.all([
+      const [organizations, memberships, channels, integrations, conversations, opportunities, clients] = await Promise.all([
         sb('crm_organizations?status=eq.active&select=id,name,slug,status,crm_path,created_at&order=name.asc'),
         sb('crm_memberships?status=eq.active&select=id,organization_id,email,display_name,role,status,permissions'),
         sb('crm_channels?select=id,organization_id,channel_type,status'),
         sb('crm_integrations?select=id,organization_id,provider,status'),
         sb('crm_conversations?select=id,organization_id,status'),
-        sb('crm_opportunities?select=id,organization_id,status')
+        sb('crm_opportunities?select=id,organization_id,status'),
+        sb('clients?select=id,organization_id,name,sector,plan,monthly_fee,status,contact_name,contact_email,contact_phone,next_payment_date,dashboard_url,payment_status,payment_method_label,portal_settings,created_at,updated_at')
       ]);
 
       const usersByOrg = countByOrg(memberships);
@@ -52,18 +53,24 @@ module.exports = async function handler(req, res) {
       const opportunitiesByOrg = countByOrg((opportunities || []).filter(x => x.status === 'open'));
 
       const owners = {};
+      const membersByOrg = {};
       for (const m of memberships || []) {
+        if (!membersByOrg[m.organization_id]) membersByOrg[m.organization_id] = [];
+        membersByOrg[m.organization_id].push(m);
         if (m.role === 'owner') owners[m.organization_id] = {
           email: m.email,
           display_name: m.display_name
         };
       }
+      const clientsByOrg = Object.fromEntries((clients || []).filter(x => x.organization_id).map(x => [x.organization_id, x]));
 
       return res.status(200).json({
         ok: true,
         organizations: (organizations || []).map(org => ({
           ...org,
           owner: owners[org.id] || null,
+          client: clientsByOrg[org.id] || null,
+          memberships: membersByOrg[org.id] || [],
           stats: {
             users: usersByOrg[org.id] || 0,
             channels: channelsByOrg[org.id] || 0,
@@ -77,19 +84,20 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       const action = String(req.body?.action || '').trim();
-      if (action !== 'enter_org') return res.status(400).json({ ok: false, error: 'Acción no válida' });
+      if (!['enter_org','preview_client'].includes(action)) return res.status(400).json({ ok: false, error: 'Acción no válida' });
 
       const orgSlug = String(req.body?.org_slug || '').trim().toLowerCase();
       const rows = await sb(`crm_organizations?slug=eq.${encodeURIComponent(orgSlug)}&status=eq.active&select=id,name,slug,crm_path&limit=1`);
       const org = rows?.[0];
       if (!org) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
 
+      const preview = action === 'preview_client';
       setSession(res, {
         sub: session.sub,
         email: session.email,
         platform_role: 'super_admin',
-        role: 'owner',
-        permissions: {},
+        role: preview ? 'client' : 'owner',
+        permissions: preview ? { modules:{ dashboard:true, crm:true, analytics:true, payments:true, reports:true } } : {},
         organization_id: org.id,
         organization_slug: org.slug,
         organization_name: org.name
@@ -101,7 +109,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           organization_id: org.id,
           host_email: session.email,
-          action: 'enter_crm',
+          action: preview ? 'preview_client_portal' : 'enter_crm',
           metadata: { organization_slug: org.slug }
         })
       });
@@ -109,7 +117,9 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         organization: org,
-        crm_url: `/crm?workspace=${encodeURIComponent(org.slug)}&host=1`
+        crm_url: preview
+          ? `/crm?workspace=${encodeURIComponent(org.slug)}&client_preview=1`
+          : `/crm?workspace=${encodeURIComponent(org.slug)}&host=1`
       });
     }
 
