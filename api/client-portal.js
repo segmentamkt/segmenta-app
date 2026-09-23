@@ -62,9 +62,10 @@ async function portalPayload(orgId) {
   if (!org) throw new Error('Workspace no encontrado');
   const client = await clientForOrg(orgId);
 
-  const [opps, orders] = await Promise.all([
+  const [opps, orders, openTasks] = await Promise.all([
     sb(`crm_opportunities?organization_id=eq.${orgId}&is_test=eq.false&select=id,title,stage,status,value,product,city,source,created_at,updated_at&order=updated_at.desc&limit=100`),
-    sb(`crm_orders?organization_id=eq.${orgId}&is_test=eq.false&select=id,order_number,total,payment_status,status,created_at&order=created_at.desc&limit=100`)
+    sb(`crm_orders?organization_id=eq.${orgId}&is_test=eq.false&select=id,order_number,total,payment_status,status,created_at&order=created_at.desc&limit=100`),
+    sb(`crm_tasks?organization_id=eq.${orgId}&is_test=eq.false&status=in.(pending,in_progress)&select=id,title,task_type,status,priority,due_at,created_at,opportunity_id&order=due_at.asc.nullslast&limit=200`)
   ]);
 
   let reports=[],analyses=[],documents=[],services=[];
@@ -94,9 +95,12 @@ async function portalPayload(orgId) {
       opportunities_won: won.length,
       won_value: won.reduce((s,x)=>s+Number(x.value||0),0),
       orders_paid: paidOrders.length,
-      paid_value: paidOrders.reduce((s,x)=>s+Number(x.total||0),0)
+      paid_value: paidOrders.reduce((s,x)=>s+Number(x.total||0),0),
+      tasks_open: (openTasks || []).length,
+      tasks_overdue: (openTasks || []).filter(x=>x.due_at && new Date(x.due_at)<new Date()).length
     },
     opportunities: opps || [],
+    tasks: openTasks || [],
     weekly_reports: reports || [],
     analyses: analyses || [],
     documents: documents || []
