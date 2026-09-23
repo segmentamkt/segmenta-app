@@ -298,7 +298,7 @@ async function ensureCrmAuth(loadInboxAfter=false){
     return true
   }catch(_){document.getElementById('crmLoginModal').classList.remove('hidden');return false}
 }
-function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||'segmenta'}
+function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||''}
 function renderCrmSession(){
   const email=crmSession?.email||'CRM';
   document.getElementById('orgContextName').textContent=crmSession?.organization?.name||'CRM';
