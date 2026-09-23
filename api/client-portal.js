@@ -36,10 +36,13 @@ const SERVICE_CATALOG = [
   { key:'google_ads', name:'Google Ads' },
   { key:'tiktok_ads', name:'TikTok Ads' },
   { key:'organic_strategy', name:'Estrategia Orgánica' },
+  { key:'content_recording', name:'Grabación de contenido' },
+  { key:'editing', name:'Edición' },
   { key:'crm', name:'CRM' },
   { key:'tasks', name:'Tareas' },
   { key:'integrations', name:'Integraciones / Automatización' },
-  { key:'web_landing', name:'Web / Landing Pages' },
+  { key:'web', name:'Página web' },
+  { key:'landing', name:'Landing Page' },
   { key:'reports', name:'Reportes' },
   { key:'payments', name:'Pagos' }
 ];
@@ -144,7 +147,7 @@ module.exports = async function handler(req,res){
           contact_phone: String(req.body?.contact_phone || '').trim() || null,
           next_payment_date: req.body?.next_payment_date || null,
           dashboard_url: String(req.body?.dashboard_url || '').trim() || null,
-          payment_status: ['current','due_soon','overdue'].includes(req.body?.payment_status) ? req.body.payment_status : 'current',
+          payment_status: ['current','due_soon','overdue','courtesy','tbd','paid'].includes(req.body?.payment_status) ? req.body.payment_status : 'current',
           payment_method_label: String(req.body?.payment_method_label || '').trim() || null,
           portal_settings: {
             results: req.body?.portal_settings?.results !== false,
@@ -190,7 +193,7 @@ module.exports = async function handler(req,res){
             service_name: catalog.name,
             active_in_plan: !!item.active_in_plan,
             client_visible: !!item.client_visible,
-            status: ['inactive','setup','active','paused','waiting_client'].includes(item.status) ? item.status : 'inactive',
+            status: ['inactive','setup','active','paused','waiting_client','under_construction','review','published','completed'].includes(item.status) ? item.status : 'inactive',
             plan_label: String(item.plan_label || '').trim() || null,
             notes: String(item.notes || '').trim() || null,
             metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : (existingMetadata[key] || {}),
