@@ -328,8 +328,7 @@ async function ensureCrmAuth(loadInboxAfter=false){
       if(clientCrmRequested){
         try{
           const pr=await fetch('/api/client-portal',{cache:'no-store'}),pd=await pr.json();
-          const crmService=(pd.services||[]).find(x=>x.service_key==='crm');
-          clientCrmAuthorized=pr.ok&&pd.portal_settings?.crm===true&&crmService?.active_in_plan===true&&crmService?.client_visible===true&&crmService?.status!=='inactive';
+          clientCrmAuthorized=pr.ok&&pd.crm_access===true;
         }catch(_){clientCrmAuthorized=false}
       }
       if(!clientCrmAuthorized){
