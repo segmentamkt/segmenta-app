@@ -26,7 +26,7 @@
   function service(key){return services().find(x=>x.service_key===key)||{service_key:key,service_name:SERVICE_UI[key]?.label||key,active_in_plan:false,client_visible:false,status:'inactive',metadata:{}}}
   function visibleServices(){return services().filter(x=>x.client_visible&&SERVICE_UI[x.service_key])}
   function portalAccess(key){const p=portalData?.portal_settings||{};return key==='crm'?p.crm===true:p[key]!==false}
-  function crmEnabled(){const s=service('crm');return portalAccess('crm')&&s.active_in_plan&&s.client_visible&&s.status!=='inactive'}
+  function crmEnabled(){return portalData?.crm_access===true}
   function statusLabel(v){return ({inactive:'Inactivo',setup:'En configuración',active:'Activo',paused:'Pausado',waiting_client:'Esperando información',under_construction:'En construcción',review:'En revisión',published:'Publicado',completed:'Completado'})[v]||v||'Inactivo'}
   function statusClass(v){return ['active','published','completed'].includes(v)?'active':['setup','waiting_client','under_construction','review'].includes(v)?'waiting':v==='paused'?'paused':'inactive'}
 
