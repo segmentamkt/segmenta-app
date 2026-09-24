@@ -14,7 +14,8 @@
     {key:'web',name:'Página web',group:'Activos',icon:'W',desc:'Sitio web, avances, revisión y publicación.'},
     {key:'landing',name:'Landing Page',group:'Activos',icon:'L',desc:'Landing pages, avances, revisión y publicación.'},
     {key:'reports',name:'Reportes',group:'Cuenta',icon:'R',desc:'Informes, análisis y documentos publicados.'},
-    {key:'payments',name:'Pagos',group:'Cuenta',icon:'
+    {key:'payments',name:'Pagos',group:'Cuenta',icon:'$',desc:'Mensualidad, vencimientos, facturas y recibos.'}
+  ];
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
   function money(v){try{return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0)}catch(_){return '$'+Number(v||0)}}
