@@ -6,7 +6,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const META_APP_ID = process.env.META_APP_ID || '1069309302411448';
 const META_APP_SECRET = process.env.META_APP_SECRET || '';
 const META_GRAPH_VERSION = 'v26.0';
-const APP_ORIGIN = process.env.CRM_PUBLIC_ORIGIN || 'https://www.segmenta.online';
+const APP_ORIGIN = process.env.CRM_PUBLIC_ORIGIN || 'https://app.segmenta.online';
 
 async function sb(path, options = {}) {
   if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase service key not configured');
