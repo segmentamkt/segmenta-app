@@ -60,35 +60,63 @@ function defaultServices() {
   }));
 }
 
+function resolveOrgId(session, body) {
+  return isPlatformAdmin(session)
+    ? String(body?.organization_id || session.organization_id || '').trim()
+    : String(session.organization_id || '').trim();
+}
+
+async function entityBelongsToClient(entityType, entityId, client, orgId) {
+  if (!entityId || !client?.id) return false;
+  if (entityType === 'task') {
+    const rows = await sb(`crm_tasks?id=eq.${encodeURIComponent(entityId)}&organization_id=eq.${encodeURIComponent(orgId)}&select=id,metadata&limit=1`);
+    const row = rows?.[0];
+    return !!row && (row.metadata?.portal_visible === true || row.metadata?.client_id === client.id);
+  }
+  const table = entityType === 'request' ? 'client_requests' : entityType === 'announcement' ? 'client_announcements' : '';
+  if (!table) return false;
+  const rows = await sb(`${table}?id=eq.${encodeURIComponent(entityId)}&client_id=eq.${encodeURIComponent(client.id)}&select=id&limit=1`);
+  return !!rows?.[0];
+}
+
 async function portalPayload(orgId) {
   const org = await orgById(orgId);
   if (!org) throw new Error('Workspace no encontrado');
   const client = await clientForOrg(orgId);
 
-  const [opps, orders, openTasks] = await Promise.all([
-    sb(`crm_opportunities?organization_id=eq.${orgId}&is_test=eq.false&select=id,title,stage,status,value,product,city,source,created_at,updated_at&order=updated_at.desc&limit=100`),
-    sb(`crm_orders?organization_id=eq.${orgId}&is_test=eq.false&select=id,order_number,total,payment_status,status,created_at&order=created_at.desc&limit=100`),
-    sb(`crm_tasks?organization_id=eq.${orgId}&is_test=eq.false&status=in.(pending,in_progress)&select=id,title,task_type,status,priority,due_at,created_at,opportunity_id&order=due_at.asc.nullslast&limit=200`)
+  const [opps, orders, allTasks] = await Promise.all([
+    sb(`crm_opportunities?organization_id=eq.${encodeURIComponent(orgId)}&is_test=eq.false&select=id,title,stage,status,value,product,city,source,created_at,updated_at&order=updated_at.desc&limit=100`),
+    sb(`crm_orders?organization_id=eq.${encodeURIComponent(orgId)}&is_test=eq.false&select=id,order_number,total,payment_status,status,created_at&order=created_at.desc&limit=100`),
+    sb(`crm_tasks?organization_id=eq.${encodeURIComponent(orgId)}&is_test=eq.false&select=id,title,description,task_type,status,priority,due_at,created_at,updated_at,metadata&order=created_at.desc&limit=250`)
   ]);
 
-  let reports=[],analyses=[],documents=[],services=[],requests=[],announcements=[],files=[];
+  let reports=[],analyses=[],documents=[],services=[],requests=[],announcements=[],files=[],comments=[];
   if (client?.id) {
-    [reports, analyses, documents, services, requests, announcements, files] = await Promise.all([
+    [reports, analyses, documents, services, requests, announcements, files, comments] = await Promise.all([
       sb(`weekly_reports?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=24`),
       sb(`client_analyses?client_id=eq.${client.id}&select=*&order=published_at.desc&limit=50`),
       sb(`client_documents?client_id=eq.${client.id}&select=*&order=document_date.desc.nullslast,created_at.desc&limit=100`),
       sb(`client_services?client_id=eq.${client.id}&select=*&order=service_name.asc`),
-      sb(`client_requests?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=100`),
-      sb(`client_announcements?client_id=eq.${client.id}&visible_to_client=eq.true&select=*&order=created_at.desc&limit=100`),
-      sb(`client_files?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=100`)
+      sb(`client_requests?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=150`),
+      sb(`client_announcements?client_id=eq.${client.id}&visible_to_client=eq.true&select=*&order=created_at.desc&limit=150`),
+      sb(`client_files?client_id=eq.${client.id}&select=*&order=created_at.desc&limit=150`),
+      sb(`client_comments?client_id=eq.${client.id}&select=*&order=created_at.asc&limit=500`)
     ]);
   }
+
   const serviceMap = Object.fromEntries((services || []).map(x => [x.service_key, x]));
   services = defaultServices().map(x => ({ ...x, ...(serviceMap[x.service_key] || {}) }));
+
+  const portalTasks = (allTasks || []).filter(t => {
+    const m = t.metadata || {};
+    return m.portal_visible === true || (client?.id && m.client_id === client.id);
+  });
 
   const open = (opps || []).filter(x => x.status === 'open');
   const won = (opps || []).filter(x => x.status === 'won' || x.stage === 'won');
   const paidOrders = (orders || []).filter(x => x.payment_status === 'paid');
+  const openPortalTasks = portalTasks.filter(x => !['completed','done','cancelled'].includes(x.status));
+
   return {
     ok: true,
     organization: org,
@@ -102,17 +130,20 @@ async function portalPayload(orgId) {
       won_value: won.reduce((s,x)=>s+Number(x.value||0),0),
       orders_paid: paidOrders.length,
       paid_value: paidOrders.reduce((s,x)=>s+Number(x.total||0),0),
-      tasks_open: (openTasks || []).length,
-      tasks_overdue: (openTasks || []).filter(x=>x.due_at && new Date(x.due_at)<new Date()).length
+      tasks_open: openPortalTasks.length,
+      tasks_waiting_client: openPortalTasks.filter(x=>x.status==='waiting_client').length,
+      tasks_overdue: openPortalTasks.filter(x=>x.due_at && new Date(x.due_at)<new Date()).length,
+      requests_open: (requests || []).filter(x=>!['completed','closed'].includes(x.status)).length
     },
     opportunities: opps || [],
-    tasks: openTasks || [],
+    tasks: portalTasks,
     weekly_reports: reports || [],
     analyses: analyses || [],
     documents: documents || [],
     requests: requests || [],
     announcements: announcements || [],
-    files: files || []
+    files: files || [],
+    comments: comments || []
   };
 }
 
@@ -136,7 +167,7 @@ module.exports = async function handler(req,res){
       const action = String(req.body?.action || '').trim();
 
       if (action === 'create_request') {
-        const orgId = isPlatformAdmin(session) ? String(req.body?.organization_id || session.organization_id || '').trim() : session.organization_id;
+        const orgId = resolveOrgId(session, req.body);
         if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
         const client = await clientForOrg(orgId);
         if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
@@ -153,8 +184,66 @@ module.exports = async function handler(req,res){
         return res.status(200).json({ok:true,request:rows?.[0]||null});
       }
 
+      if (action === 'create_task') {
+        const orgId = resolveOrgId(session, req.body);
+        if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
+        const client = await clientForOrg(orgId);
+        if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        const title=String(req.body?.title||'').trim();
+        if(!title) return res.status(400).json({ok:false,error:'Título requerido'});
+        const role=isPlatformAdmin(session)?'host':(session.role||'client');
+        const rows=await sb('crm_tasks',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
+          organization_id:orgId,
+          title,
+          description:String(req.body?.description||'').trim()||null,
+          due_at:req.body?.due_at||null,
+          status:'pending',
+          priority:['low','normal','high','urgent'].includes(req.body?.priority)?req.body.priority:'normal',
+          task_type:'client_portal',
+          auto_generated:false,
+          is_test:false,
+          metadata:{
+            portal_visible:true,
+            client_id:client.id,
+            service_key:String(req.body?.service_key||'').trim()||null,
+            created_by_role:role,
+            created_by_name:session.email||null
+          }
+        })});
+        return res.status(200).json({ok:true,task:rows?.[0]||null});
+      }
+
+      if (action === 'set_task_status') {
+        const orgId = resolveOrgId(session, req.body);
+        const client = await clientForOrg(orgId);
+        const taskId=String(req.body?.task_id||'').trim();
+        if(!taskId || !await entityBelongsToClient('task',taskId,client,orgId)) return res.status(404).json({ok:false,error:'Tarea no encontrada'});
+        const status=['pending','in_progress','waiting_client','review','completed'].includes(req.body?.status)?req.body.status:null;
+        if(!status) return res.status(400).json({ok:false,error:'Estado no válido'});
+        const body={status,updated_at:new Date().toISOString()};
+        if(status==='completed') body.completed_at=new Date().toISOString();
+        const rows=await sb(`crm_tasks?id=eq.${encodeURIComponent(taskId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(body)});
+        return res.status(200).json({ok:true,task:rows?.[0]||null});
+      }
+
+      if (action === 'add_comment') {
+        const orgId = resolveOrgId(session, req.body);
+        const client = await clientForOrg(orgId);
+        const entityType=['task','request','announcement'].includes(req.body?.entity_type)?req.body.entity_type:'';
+        const entityId=String(req.body?.entity_id||'').trim();
+        const body=String(req.body?.body||'').trim();
+        if(!entityType||!entityId||!body) return res.status(400).json({ok:false,error:'Comentario incompleto'});
+        if(!await entityBelongsToClient(entityType,entityId,client,orgId)) return res.status(404).json({ok:false,error:'Elemento no encontrado'});
+        const rows=await sb('client_comments',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
+          client_id:client.id,organization_id:orgId,entity_type:entityType,entity_id:entityId,body,
+          created_by_role:isPlatformAdmin(session)?'host':(session.role||'client'),
+          created_by_name:session.email||null
+        })});
+        return res.status(200).json({ok:true,comment:rows?.[0]||null});
+      }
+
       if (action === 'upload_file') {
-        const orgId = isPlatformAdmin(session) ? String(req.body?.organization_id || session.organization_id || '').trim() : session.organization_id;
+        const orgId = resolveOrgId(session, req.body);
         if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
         const client = await clientForOrg(orgId);
         if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
@@ -175,6 +264,7 @@ module.exports = async function handler(req,res){
         const rows=await sb('client_files',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
           client_id:client.id,organization_id:orgId,
           request_id:req.body?.request_id||null,
+          task_id:req.body?.task_id||null,
           file_name:fileName,file_url:fileUrl,file_type:mime,
           uploaded_by_role:isPlatformAdmin(session)?'host':(session.role||'client'),
           uploaded_by_name:session.email||null
@@ -183,6 +273,18 @@ module.exports = async function handler(req,res){
       }
 
       if (!isPlatformAdmin(session)) return res.status(403).json({ok:false,error:'Solo el Host puede configurar el portal del cliente'});
+
+      if (action === 'create_announcement') {
+        const orgId=String(req.body?.organization_id||'').trim();
+        const client=await clientForOrg(orgId);
+        if(!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        const title=String(req.body?.title||'').trim(),body=String(req.body?.body||'').trim();
+        if(!title||!body) return res.status(400).json({ok:false,error:'Título y mensaje requeridos'});
+        const rows=await sb('client_announcements',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
+          client_id:client.id,organization_id:orgId,title,body,visible_to_client:true,created_by:session.email||'Segmenta'
+        })});
+        return res.status(200).json({ok:true,announcement:rows?.[0]||null});
+      }
 
       if (action === 'upsert_profile') {
         const organizationId = String(req.body?.organization_id || '').trim();
@@ -213,17 +315,9 @@ module.exports = async function handler(req,res){
         };
         let rows;
         if (existing?.id) {
-          rows = await sb(`clients?id=eq.${existing.id}`, {
-            method:'PATCH',
-            headers:{Prefer:'return=representation'},
-            body:JSON.stringify(body)
-          });
+          rows = await sb(`clients?id=eq.${existing.id}`, {method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(body)});
         } else {
-          rows = await sb('clients', {
-            method:'POST',
-            headers:{Prefer:'return=representation'},
-            body:JSON.stringify(body)
-          });
+          rows = await sb('clients', {method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(body)});
         }
         return res.status(200).json({ok:true,client:rows?.[0]||null});
       }
