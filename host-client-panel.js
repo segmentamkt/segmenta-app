@@ -16,6 +16,22 @@
     {key:'reports',name:'Reportes',group:'Cuenta',icon:'R',desc:'Informes, análisis y documentos publicados.'},
     {key:'payments',name:'Pagos',group:'Cuenta',icon:'$',desc:'Mensualidad, vencimientos, facturas y recibos.'}
   ];
+  const PORTAL_MODULES=[
+    {key:'services',name:'Servicios',desc:'Servicios contratados y estado de cada uno.'},
+    {key:'results',name:'Resultados',desc:'Métricas, reportes y análisis publicados.'},
+    {key:'tasks',name:'Tareas',desc:'Pendientes compartidos con el cliente.'},
+    {key:'requests',name:'Solicitudes',desc:'Errores, cambios y requerimientos.'},
+    {key:'files',name:'Archivos',desc:'Carga y consulta de material compartido.'},
+    {key:'announcements',name:'Anuncios',desc:'Novedades y actualizaciones del equipo.'},
+    {key:'payments',name:'Pagos',desc:'Estado de cuenta, facturas y recibos.'},
+    {key:'crm',name:'Acceso al CRM',desc:'Entrada al CRM operativo del cliente. Requiere servicio CRM activo.'}
+  ];
+
+  function portalModuleEditorHtml(){
+    return PORTAL_MODULES.map(m=>`<label class="host-service-edit host-module-access"><div class="host-service-edit-head"><span class="host-service-icon">◎</span><div><b>${esc(m.name)}</b><small>${esc(m.desc)}</small></div></div><div class="host-service-controls"><span class="host-toggle"><input type="checkbox" id="cpModule_${m.key}"><span>Visible / habilitado</span></span></div></label>`).join('');
+  }
+
+
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
   function money(v){try{return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0)}catch(_){return '$'+Number(v||0)}}
@@ -98,6 +114,9 @@
         </div>
         <div class="host-subsection"><h4>Servicios y accesos</h4><p class="host-help">“Activo en el plan” indica que el cliente lo tiene contratado. “Visible al cliente” controla si aparece como pestaña en su portal.</p>
           <div class="host-service-editor-grid">${serviceEditorHtml()}</div>
+        </div>
+        <div class="host-subsection"><h4>Módulos visibles en el portal</h4><p class="host-help">Estos permisos son independientes de los servicios contratados. Por ejemplo, un cliente puede tener Meta Ads y no tener acceso al CRM.</p>
+          <div class="host-service-editor-grid">${portalModuleEditorHtml()}</div>
         </div>
         <div class="host-subsection" id="clientAccessSection"><h4>Acceso del cliente</h4>
           <div class="host-portal-form">
@@ -228,6 +247,11 @@
     document.getElementById('cpDashboard').value=c.dashboard_url||'';
     document.getElementById('cpContactName').value=c.contact_name||'';
     document.getElementById('cpContactEmail').value=c.contact_email||'';
+    const ps=c.portal_settings||{};
+    for(const m of PORTAL_MODULES){
+      const el=document.getElementById('cpModule_'+m.key);
+      if(el)el.checked=m.key==='crm'?ps.crm===true:ps[m.key]!==false;
+    }
     for(const s of SERVICES){
       const row=serviceRow(c,s.key);
       document.getElementById('svcPlan_'+s.key).checked=!!row.active_in_plan;
@@ -250,6 +274,15 @@
   async function req(url,body){
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(j.error||'No fue posible guardar');return j;
+  }
+
+  function portalSettingsPayload(){
+    const out={reports:true};
+    for(const m of PORTAL_MODULES){
+      const el=document.getElementById('cpModule_'+m.key);
+      out[m.key]=!!el?.checked;
+    }
+    return out;
   }
 
   function servicePayload(){
@@ -276,7 +309,7 @@
         plan:document.getElementById('cpPlan').value,monthly_fee:document.getElementById('cpFee').value,payment_status:document.getElementById('cpPaymentStatus').value,
         next_payment_date:document.getElementById('cpNextPayment').value||null,payment_method_label:document.getElementById('cpPaymentMethod').value.trim(),
         dashboard_url:document.getElementById('cpDashboard').value.trim(),contact_name:document.getElementById('cpContactName').value.trim(),contact_email:document.getElementById('cpContactEmail').value.trim(),
-        portal_settings:{}
+        portal_settings:portalSettingsPayload()
       });
       if(profile.client?.id)await req('/api/client-portal',{action:'save_services',client_id:profile.client.id,services:servicePayload()});
       const email=document.getElementById('cpUserEmail').value.trim(),password=document.getElementById('cpUserPassword').value;
