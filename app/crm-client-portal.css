@@ -90,3 +90,74 @@ body.client-preview-mode .client-host-return{display:block}
 .portal-upload-row input{border:1px solid var(--line);border-radius:9px;padding:9px;background:#fff}
 .portal-announcement>p{font-size:.63rem;line-height:1.55;white-space:pre-wrap}
 @media(max-width:760px){.portal-comment-form,.portal-upload-row{grid-template-columns:1fr}}
+
+
+/* Portal visual v3 — intentionally different from the CRM */
+body.client-portal-mode{background:#fffaf4}
+body.client-portal-mode .shell{display:block;min-height:100vh;background:
+  radial-gradient(circle at 92% 0%,rgba(230,124,0,.11),transparent 27%),
+  linear-gradient(180deg,#fffdf9 0,#fff8ef 100%)}
+body.client-portal-mode .sidebar{
+  position:sticky;top:0;z-index:30;min-height:0;width:100%;padding:13px 26px;
+  display:flex;flex-direction:row;align-items:center;gap:18px;
+  background:rgba(255,255,255,.94);color:#2d241d;border-bottom:1px solid #f0e2d2;
+  box-shadow:0 7px 24px rgba(90,55,19,.055);backdrop-filter:blur(14px)
+}
+body.client-portal-mode .logo{min-width:max-content;color:#2d241d;font-size:17px}
+body.client-portal-mode .logo-mark{background:linear-gradient(145deg,#ff9b25,#df6f00);color:#fff;box-shadow:0 7px 17px rgba(230,124,0,.2)}
+body.client-portal-mode .logo small{color:#b77a3e}
+body.client-portal-mode .org-context{margin:0;padding-left:18px;border-left:1px solid #eadfd2;min-width:140px}
+body.client-portal-mode .org-context label{margin:0 0 2px;color:#a58466;font-size:8px}
+body.client-portal-mode .org-box{border:0;padding:0;border-radius:0;color:#2d241d;font-size:11px}
+body.client-portal-mode #clientNav{display:flex;align-items:center;gap:4px;overflow-x:auto;min-width:0;flex:1;padding:0 4px}
+body.client-portal-mode .client-nav-item{
+  display:inline-flex!important;width:auto;flex:0 0 auto;margin:0;padding:8px 10px;border-radius:999px;
+  color:#766457;background:transparent;font-size:11px;font-weight:750;text-decoration:none
+}
+body.client-portal-mode .client-nav-item:hover{background:#fff1df;color:#b95f00}
+body.client-portal-mode .client-nav-item.active{background:#2d241d;color:#fff}
+body.client-portal-mode .client-nav-item .ico{font-size:10px;opacity:.8}
+body.client-portal-mode .client-nav-link{border:1px solid #f0d1ae;color:#b85e00;background:#fff7ed}
+body.client-portal-mode .sidebar-bottom{margin:0 0 0 auto;padding:0 0 0 16px;border:0;border-left:1px solid #eadfd2;min-width:max-content}
+body.client-portal-mode .sidebar-bottom b{color:#2d241d;font-size:10px}
+body.client-portal-mode .sidebar-bottom .role{display:block!important;color:#a1846b;font-size:8px}
+body.client-portal-mode .logout-link{color:#9b6f4d;font-size:9px;margin-top:3px}
+body.client-portal-mode .client-host-return{order:3;margin:0;white-space:nowrap;color:#c16608;font-size:9px}
+body.client-portal-mode .topbar{
+  height:46px;max-width:1320px;margin:0 auto;padding:0 30px;background:transparent;border:0;
+}
+body.client-portal-mode .crumb{font-size:10px;color:#a1846b}
+body.client-portal-mode .portal-pill{background:#fff1df;color:#a95400;border:1px solid #f3dcc0}
+body.client-portal-mode .client-portal-page{max-width:1320px;padding:28px 30px 46px}
+body.client-portal-mode .client-welcome{
+  background:linear-gradient(135deg,#2d241d,#4a321e);color:#fff;border-radius:24px;padding:25px 27px;margin-bottom:18px;
+  box-shadow:0 18px 45px rgba(70,42,18,.13)
+}
+body.client-portal-mode .client-welcome .eyebrow{color:#ffc682}
+body.client-portal-mode .client-welcome h1{font-size:2.15rem;letter-spacing:-.035em}
+body.client-portal-mode .client-welcome p{color:#e8d9cb;max-width:690px}
+body.client-portal-mode .client-badge{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18);color:#fff}
+body.client-portal-mode .client-card,
+body.client-portal-mode .client-metric{border-color:#efe2d4;box-shadow:0 8px 25px rgba(87,51,18,.045)}
+body.client-portal-mode .client-card{border-radius:20px}
+body.client-portal-mode .client-metric{border-radius:18px;background:rgba(255,255,255,.92)}
+body.client-portal-mode .client-service-card{border-radius:17px;border-color:#edddcb;background:linear-gradient(180deg,#fff,#fffaf4);cursor:default}
+body.client-portal-mode .client-service-icon{background:#fff0dd;color:#b85e00;border:1px solid #f1d4b4}
+.client-service-open{display:inline-flex;margin-top:10px;text-decoration:none;background:#2d241d;color:#fff;border-radius:10px;padding:8px 10px;font-size:.58rem;font-weight:850}
+.portal-quick-actions{display:grid;gap:8px}
+.client-action.secondary{background:#fff;color:#2d241d;border:1px solid var(--line)}
+.client-action.crm-action{display:block;text-align:center;text-decoration:none;background:#2d241d}
+body.client-portal-mode .client-payment{background:#fffdf9}
+@media(max-width:1000px){
+  body.client-portal-mode .sidebar{flex-wrap:wrap;padding:12px 16px;gap:10px}
+  body.client-portal-mode .org-context{display:none}
+  body.client-portal-mode #clientNav{order:3;flex-basis:100%;padding-top:5px}
+  body.client-portal-mode .sidebar-bottom{margin-left:auto}
+  body.client-portal-mode .client-portal-page{padding:20px 16px 36px}
+  body.client-portal-mode .topbar{padding:0 16px}
+}
+@media(max-width:620px){
+  body.client-portal-mode .client-welcome{padding:20px;border-radius:19px}
+  body.client-portal-mode .client-welcome h1{font-size:1.65rem}
+  body.client-portal-mode .sidebar-bottom{display:none}
+}
