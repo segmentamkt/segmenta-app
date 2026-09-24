@@ -78,6 +78,6 @@ function closeOwner(){document.getElementById('ownerModal').classList.add('hidde
 async function createOwner(e){e.preventDefault();const body={action:'create_user',organization_id:document.getElementById('ownerOrgId').value,display_name:document.getElementById('ownerName').value.trim(),email:document.getElementById('ownerEmail').value.trim(),password:document.getElementById('ownerPassword').value,role:'owner',permissions:{}};const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json();if(!r.ok){alert(j.error||'No fue posible crear el dueño');return}document.getElementById('ownerName').value='';document.getElementById('ownerEmail').value='';document.getElementById('ownerPassword').value='';closeOwner();await loadHost()}
 loadHost();
 </script>
-<script src="/host-client-panel.js?v=20260923-4"></script>
+<script src="/host-client-panel.js?v=20260924-3"></script>
 </body>
 </html>
