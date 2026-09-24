@@ -58,3 +58,35 @@ body.client-preview-mode .client-host-return{display:block}
 .client-announcement>span{display:block;font-size:10px;color:var(--muted);margin:4px 0 8px}
 .client-announcement p{white-space:pre-wrap}
 @media(max-width:700px){.client-form-grid{grid-template-columns:1fr}.client-form-grid .wide{grid-column:auto}}
+
+
+/* Portal de cliente v2 */
+.portal-stack{display:grid;gap:10px}
+.portal-work-item{margin:0}
+.portal-work-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.portal-work-head b{font-size:.76rem}
+.portal-work-head p{font-size:.6rem;color:var(--muted);line-height:1.5;margin:4px 0 0}
+.portal-work-meta{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.portal-work-meta span{background:#faf8f5;border:1px solid var(--line);border-radius:999px;padding:5px 7px;font-size:.51rem;color:var(--muted);font-weight:750}
+.portal-status{display:inline-flex;border-radius:999px;padding:4px 7px;font-size:.5rem;font-weight:900;white-space:nowrap;background:#efedea;color:#746d67}
+.portal-status.active,.portal-status.published,.portal-status.completed,.portal-status.done{background:#e7f5ed;color:#27754f}
+.portal-status.setup,.portal-status.waiting_client,.portal-status.under_construction,.portal-status.review,.portal-status.pending,.portal-status.in_progress{background:#fff2d9;color:#95620a}
+.portal-status.paused{background:#f4ede7;color:#8e6547}
+.portal-work-actions{display:flex;gap:7px;margin:10px 0}
+.portal-work-actions button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 9px;font-size:.56rem;font-weight:800;cursor:pointer}
+.portal-comments{border-top:1px solid var(--line);margin-top:11px;padding-top:10px}
+.portal-comment{border-radius:9px;padding:8px 9px;margin-bottom:6px;background:#faf8f5}
+.portal-comment.client{background:#fff5e8}
+.portal-comment b{font-size:.56rem}
+.portal-comment span{font-size:.49rem;color:var(--muted);margin-left:6px}
+.portal-comment p{font-size:.58rem;line-height:1.45;margin:4px 0 0}
+.portal-no-comments{font-size:.54rem;color:var(--muted);margin-bottom:7px}
+.portal-comment-form{display:grid;grid-template-columns:1fr auto;gap:7px}
+.portal-comment-form input{border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:.6rem}
+.portal-comment-form button{border:0;background:#2c2119;color:#fff;border-radius:8px;padding:8px 10px;font-size:.56rem;font-weight:850;cursor:pointer}
+.portal-attachments{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.portal-attachments a{font-size:.53rem;font-weight:800;color:var(--brand2);text-decoration:none;background:#fff7ee;border:1px solid #f1d8bd;border-radius:8px;padding:6px 8px}
+.portal-upload-row{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center}
+.portal-upload-row input{border:1px solid var(--line);border-radius:9px;padding:9px;background:#fff}
+.portal-announcement>p{font-size:.63rem;line-height:1.55;white-space:pre-wrap}
+@media(max-width:760px){.portal-comment-form,.portal-upload-row{grid-template-columns:1fr}}
