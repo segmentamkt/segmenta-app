@@ -39,7 +39,7 @@
       document.getElementById('clientNav')?.before(a);
     }
     const main=document.querySelector('main.main');if(!main)return;
-    const ids=['summary',...Object.keys(SERVICE_UI),'requests','files','announcements'];
+    const ids=['summary','services','results','tasks','requests','files','announcements','payments'];
     ids.forEach(p=>{
       if(document.getElementById('page-client-'+p))return;
       const s=document.createElement('section');s.className='client-portal-page hidden';s.id='page-client-'+p;main.appendChild(s);
@@ -48,8 +48,13 @@
 
   function renderNav(){
     const nav=document.getElementById('clientNav');if(!nav)return;
-    const rows=[{id:'summary',label:'Inicio',icon:'⌂'},...visibleServices().map(s=>({id:s.service_key,label:SERVICE_UI[s.service_key].label,icon:SERVICE_UI[s.service_key].icon})),{id:'requests',label:'Solicitudes',icon:'!'},{id:'files',label:'Archivos',icon:'▧'},{id:'announcements',label:'Anuncios',icon:'◉'}];
-    nav.innerHTML='<div class="client-nav-label">Tu cuenta</div>'+rows.map(x=>`<button class="client-nav-item ${portalPage===x.id?'active':''}" data-client-page="${x.id}"><span class="ico">${x.icon}</span>${esc(x.label)}</button>`).join('');
+    const rows=[
+      {id:'summary',label:'Inicio',icon:'⌂'},{id:'services',label:'Servicios',icon:'▦'},
+      {id:'results',label:'Resultados',icon:'↗'},{id:'tasks',label:'Tareas',icon:'✓'},
+      {id:'requests',label:'Solicitudes',icon:'!'},{id:'files',label:'Archivos',icon:'▧'},
+      {id:'announcements',label:'Anuncios',icon:'◉'},{id:'payments',label:'Pagos',icon:'$'}
+    ];
+    nav.innerHTML='<div class="client-nav-label">Tu cuenta</div>'+rows.map(x=>'<button class="client-nav-item '+(portalPage===x.id?'active':'')+'" data-client-page="'+x.id+'"><span class="ico">'+x.icon+'</span>'+esc(x.label)+'</button>').join('');
     nav.querySelectorAll('[data-client-page]').forEach(b=>b.addEventListener('click',()=>showClientPage(b.dataset.clientPage)));
   }
 
@@ -97,27 +102,31 @@
   }
 
   function summaryHtml(){
-    const d=portalData||{},c=d.client||{},active=services().filter(x=>x.active_in_plan),visible=visibleServices(),pay=payState();
-    return `<div class="client-welcome"><div><div class="eyebrow">Portal Segmenta</div><h1>${esc(d.organization?.name||c.name||'Cliente')}</h1><p>Consulta únicamente los servicios, resultados y entregables habilitados para tu cuenta.</p></div><span class="client-badge">${active.length} servicio(s) activo(s)</span></div>
-      <div class="client-home-grid">
-        <section class="client-card client-services-overview"><h3>Servicios de tu cuenta</h3><p>Estado actual de lo que Segmenta gestiona contigo.</p>
-          <div class="client-service-grid">${visible.length?visible.map(serviceOverviewCard).join(''):'<div class="client-empty">Todavía no hay servicios visibles en tu portal.</div>'}</div>
-        </section>
-        <aside class="client-card"><h3>Cuenta</h3><p>Información administrativa.</p>
-          <div class="client-payment ${pay.cls}"><span class="client-payment-dot"></span><div><b>${pay.label}</b><span>Próximo pago: ${date(c.next_payment_date)}</span></div></div>
-          <div class="client-account-line"><span>Plan</span><b>${esc(c.plan||'—')}</b></div>
-          <div class="client-account-line"><span>Mensualidad</span><b>${money(c.monthly_fee||0)}</b></div>
-        </aside>
-      </div>`;
+    const d=portalData||{},c=d.client||{},s=d.summary||{},active=visibleServices().filter(x=>x.active_in_plan),pay=payState();
+    const recent=[
+      ...(d.announcements||[]).map(x=>({at:x.created_at,icon:'◉',title:x.title,meta:'Anuncio'})),
+      ...(d.requests||[]).map(x=>({at:x.created_at,icon:'!',title:x.title,meta:'Solicitud · '+statusLabel(x.status)})),
+      ...(d.files||[]).map(x=>({at:x.created_at,icon:'▧',title:x.file_name,meta:'Archivo'})),
+      ...(d.tasks||[]).map(x=>({at:x.updated_at||x.created_at,icon:'✓',title:x.title,meta:'Tarea · '+statusLabel(x.status)}))
+    ].sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,7);
+    return '<div class="client-welcome"><div><div class="eyebrow">Portal Segmenta</div><h1>'+esc(d.organization?.name||c.name||'Cliente')+'</h1><p>Servicios, resultados, pendientes y archivos de tu cuenta en un solo lugar.</p></div><span class="client-badge">'+active.length+' servicio(s) activo(s)</span></div>'+
+      '<div class="client-metrics">'+
+        '<div class="client-metric"><div class="k">Servicios activos</div><div class="v">'+active.length+'</div><div class="s">'+visibleServices().length+' visibles</div></div>'+
+        '<div class="client-metric"><div class="k">Tareas pendientes</div><div class="v">'+number(s.tasks_open||0)+'</div><div class="s">'+number(s.tasks_waiting_client||0)+' esperando cliente</div></div>'+
+        '<div class="client-metric"><div class="k">Solicitudes abiertas</div><div class="v">'+number(s.requests_open||0)+'</div><div class="s">Cambios y reportes</div></div>'+
+        '<div class="client-metric"><div class="k">Próximo pago</div><div class="v">'+esc(date(c.next_payment_date))+'</div><div class="s">'+esc(pay.label)+'</div></div>'+
+      '</div>'+
+      '<div class="client-home-grid"><section class="client-card"><h3>Servicios</h3><p>Lo que Segmenta gestiona actualmente.</p><div class="client-service-grid">'+
+        (visibleServices().length?visibleServices().slice(0,4).map(serviceOverviewCard).join(''):'<div class="client-empty">No hay servicios visibles todavía.</div>')+
+      '</div></section><aside class="client-card"><h3>Acciones rápidas</h3><p>Envía información sin depender de WhatsApp.</p><div style="display:grid;gap:8px"><button class="client-action" onclick="showClientPortalPage(\'requests\')">Reportar problema</button><button class="client-action" style="background:#2c2119" onclick="showClientPortalPage(\'files\')">Subir archivo</button></div><div class="client-payment '+pay.cls+'" style="margin-top:12px"><span class="client-payment-dot"></span><div><b>'+esc(pay.label)+'</b><span>Próximo pago: '+date(c.next_payment_date)+'</span></div></div></aside></div>'+
+      '<div class="client-card" style="margin-top:12px"><h3>Actividad reciente</h3><p>Últimos movimientos de tu cuenta.</p><div class="client-list">'+
+        (recent.length?recent.map(x=>'<div class="client-list-item"><div><b>'+esc(x.icon+' '+x.title)+'</b><p>'+esc(x.meta)+'</p></div><div class="right">'+date(x.at)+'</div></div>').join(''):'<div class="client-empty">Todavía no hay actividad registrada.</div>')+
+      '</div></div>';
   }
 
   function serviceOverviewCard(s){
-    const ui=SERVICE_UI[s.service_key],metrics=serviceMetrics(s.service_key);
-    return `<button type="button" class="client-service-card" onclick="showClientPortalPage('${s.service_key}')">
-      <div class="client-service-head"><span class="client-service-icon">${ui.icon}</span><div><b>${esc(ui.label)}</b><small>${esc(ui.group)}</small></div><span class="client-service-status ${statusClass(s.status)}">${esc(statusLabel(s.status))}</span></div>
-      <div class="client-service-plan">${s.active_in_plan?'✓ Activo en tu plan':'No activo en tu plan'}</div>
-      <div class="client-service-mini">${metrics.length?metrics.slice(0,2).map(m=>`<span><b>${esc(m.value)}</b><small>${esc(m.label)}</small></span>`).join(''):'<span class="no-data">Sin métricas conectadas</span>'}</div>
-    </button>`;
+    const ui=SERVICE_UI[s.service_key]||{label:s.service_name||s.service_key,icon:'•',group:'Servicio'},metrics=serviceMetrics(s.service_key);
+    return '<article class="client-service-card"><div class="client-service-head"><span class="client-service-icon">'+esc(ui.icon)+'</span><div><b>'+esc(ui.label)+'</b><small>'+esc(ui.group)+'</small></div><span class="client-service-status '+statusClass(s.status)+'">'+esc(statusLabel(s.status))+'</span></div><div class="client-service-plan">'+(s.active_in_plan?'✓ Activo en tu plan':'No activo en tu plan')+'</div><div class="client-service-mini">'+(metrics.length?metrics.slice(0,2).map(m=>'<span><b>'+esc(m.value)+'</b><small>'+esc(m.label)+'</small></span>').join(''):'<span class="no-data">Sin métricas conectadas</span>')+'</div></article>';
   }
 
   function serviceHeader(key){
@@ -165,10 +174,8 @@
   }
 
   function tasksHtml(){
-    const key='tasks',s=service(key),rows=portalData?.tasks||[];
-    if(!s.active_in_plan)return inactiveServiceHtml(key);
-    return serviceHeader(key)+`<div class="client-metrics">${serviceMetrics(key).map(metricCard).join('')}</div>
-      <div class="client-card"><h3>Tareas activas</h3><p>Seguimiento visible de pendientes del proceso.</p><div class="client-list">${rows.length?rows.map(t=>`<div class="client-list-item"><div><b>${esc(t.title||t.task_type)}</b><p>${esc(t.priority||'P3')} · ${esc(t.status)}</p></div><div class="right">${date(t.due_at)}</div></div>`).join(''):'<div class="client-empty">No hay tareas pendientes.</div>'}</div></div>`;
+    const rows=portalData?.tasks||[];
+    return '<div class="client-welcome"><div><div class="eyebrow">Pendientes</div><h1>Tareas</h1><p>Responsabilidades compartidas entre tu equipo y Segmenta.</p></div><button class="client-action" onclick="document.getElementById(\'taskFormWrap\').classList.toggle(\'hidden\')">＋ Nueva tarea</button></div><div id="taskFormWrap" class="client-card hidden"><h3>Crear tarea</h3><div class="client-form-grid"><label class="wide">Título<input id="taskTitle" placeholder="Ej. Enviar fotografías del producto"></label><label>Servicio<select id="taskService"><option value="">General</option>'+visibleServices().map(s=>'<option value="'+esc(s.service_key)+'">'+esc(SERVICE_UI[s.service_key]?.label||s.service_name)+'</option>').join('')+'</select></label><label>Prioridad<select id="taskPriority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baja</option></select></label><label>Fecha límite<input id="taskDue" type="datetime-local"></label><label>Adjunto<input id="taskFile" type="file" accept="image/*,application/pdf,video/*"></label><label class="wide">Descripción<textarea id="taskDescription" rows="3"></textarea></label></div><button class="client-action" onclick="submitPortalTask()">Crear tarea</button></div><div class="portal-stack">'+(rows.length?rows.map(t=>'<article class="client-card portal-work-item"><div class="portal-work-head"><div><b>'+esc(t.title)+'</b><p>'+esc(t.description||'')+'</p></div><span class="portal-status '+statusClass(t.status)+'">'+esc(statusLabel(t.status))+'</span></div><div class="portal-work-meta"><span>Prioridad: '+esc(t.priority||'normal')+'</span><span>Vence: '+date(t.due_at)+'</span><span>Creada por: '+esc(t.metadata?.created_by_role==='client'?'Cliente':'Segmenta')+'</span></div>'+attachments('task',t.id)+(!['completed','done'].includes(t.status)?'<div class="portal-work-actions"><button onclick="setPortalTaskStatus(\''+t.id+'\',\'review\')">Enviar a revisión</button><button onclick="setPortalTaskStatus(\''+t.id+'\',\'completed\')">Completar</button></div>':'')+commentThread('task',t.id)+'</article>').join(''):'<div class="client-card client-empty">No hay tareas visibles todavía.</div>')+'</div>';
   }
 
   function genericServiceHtml(key){
@@ -179,12 +186,8 @@
   }
 
   function paymentsHtml(){
-    const key='payments',s=service(key),c=portalData?.client||{},pay=payState(),docs=(portalData?.documents||[]).filter(x=>['invoice','receipt'].includes(x.document_type));
-    if(!s.active_in_plan)return inactiveServiceHtml(key);
-    return serviceHeader(key)+`<div class="client-grid"><div class="client-card"><h3>Tu servicio</h3><p>Información administrativa de la cuenta.</p>
-      <div class="client-payment ${pay.cls}"><span class="client-payment-dot"></span><div><b>${pay.label}</b><span>${money(c.monthly_fee||0)} / mes · próximo pago ${date(c.next_payment_date)}</span></div></div>
-      <div class="client-account-line"><span>Plan</span><b>${esc(c.plan||'—')}</b></div><div class="client-account-line"><span>Método</span><b>${esc(c.payment_method_label||'No registrado')}</b></div>
-      </div><div class="client-card"><h3>Facturas y recibos</h3><p>Documentos administrativos disponibles.</p><div class="client-list">${docs.length?docs.map(docHtml).join(''):'<div class="client-empty">No hay documentos de pago publicados.</div>'}</div></div></div>`;
+    const c=portalData?.client||{},pay=payState(),docs=(portalData?.documents||[]).filter(x=>['invoice','receipt'].includes(x.document_type));
+    return '<div class="client-welcome"><div><div class="eyebrow">Administración</div><h1>Pagos</h1><p>Estado de cuenta, próxima fecha y documentos publicados.</p></div></div><div class="client-grid"><div class="client-card"><h3>Estado de cuenta</h3><div class="client-payment '+pay.cls+'"><span class="client-payment-dot"></span><div><b>'+esc(pay.label)+'</b><span>Próximo pago: '+date(c.next_payment_date)+'</span></div></div><div class="client-account-line"><span>Mensualidad</span><b>'+money(c.monthly_fee||0)+'</b></div><div class="client-account-line"><span>Método / referencia</span><b>'+esc(c.payment_method_label||'Por definir')+'</b></div></div><div class="client-card"><h3>Facturas y recibos</h3><div class="client-list">'+(docs.length?docs.map(docHtml).join(''):'<div class="client-empty">No hay documentos de pago publicados.</div>')+'</div></div></div>';
   }
 
   function reportsHtml(){
@@ -206,6 +209,35 @@
   }
 
 
+  function servicesHubHtml(){
+    return '<div class="client-welcome"><div><div class="eyebrow">Tu plan</div><h1>Servicios</h1><p>Solo ves los servicios que Segmenta habilitó para tu cuenta.</p></div></div><div class="client-service-grid">'+(visibleServices().length?visibleServices().map(serviceOverviewCard).join(''):'<div class="client-card client-empty">Aún no hay servicios habilitados.</div>')+'</div>';
+  }
+
+  function resultsHubHtml(){
+    const cards=visibleServices().filter(x=>x.active_in_plan).map(s=>{
+      const ui=SERVICE_UI[s.service_key]||{label:s.service_name||s.service_key},metrics=serviceMetrics(s.service_key);
+      return '<div class="client-card"><h3>'+esc(ui.label)+'</h3><p>'+esc(statusLabel(s.status))+'</p>'+(metrics.length?'<div class="client-kpi-list">'+metrics.slice(0,6).map(m=>'<div><span>'+esc(m.label)+'</span><b>'+esc(m.value)+'</b></div>').join('')+'</div>':'<div class="client-empty">Servicio activo, todavía sin métricas conectadas.</div>')+'</div>';
+    });
+    const reports=portalData?.weekly_reports||[];
+    return '<div class="client-welcome"><div><div class="eyebrow">Rendimiento</div><h1>Resultados</h1><p>Métricas, reportes y aprendizajes publicados para tu cuenta.</p></div></div><div class="client-grid">'+
+      (cards.length?'<div style="display:grid;gap:12px">'+cards.join('')+'</div>':'<div class="client-card client-empty">Aún no hay resultados visibles.</div>')+
+      '<div class="client-card"><h3>Reportes recientes</h3><p>Lectura del equipo y próximos pasos.</p><div class="client-list">'+
+      (reports.length?reports.slice(0,8).map(r=>'<div class="client-list-item"><div><b>'+esc(r.week_label||date(r.created_at))+'</b><p>'+number(r.total_reach)+' alcance · '+number(r.total_engagements)+' interacciones</p><small>'+esc(r.summary||'')+'</small></div></div>').join(''):'<div class="client-empty">Sin reportes publicados.</div>')+
+      '</div><div style="margin-top:12px">'+analysisList()+'</div></div></div>';
+  }
+
+  function commentsFor(type,id){return (portalData?.comments||[]).filter(x=>x.entity_type===type&&x.entity_id===id)}
+  function linkedFiles(kind,id){return (portalData?.files||[]).filter(x=>kind==='task'?x.task_id===id:x.request_id===id)}
+  function commentThread(type,id){
+    const rows=commentsFor(type,id);
+    return '<div class="portal-comments">'+(rows.length?rows.map(c=>'<div class="portal-comment '+(c.created_by_role==='client'?'client':'segmenta')+'"><b>'+esc(c.created_by_role==='client'?'Cliente':'Segmenta')+'</b><span>'+date(c.created_at)+'</span><p>'+esc(c.body)+'</p></div>').join(''):'<div class="portal-no-comments">Sin comentarios.</div>')+'<div class="portal-comment-form"><input id="comment_'+type+'_'+id+'" placeholder="Escribe un comentario..."><button onclick="addPortalComment(\''+type+'\',\''+id+'\')">Enviar</button></div></div>';
+  }
+  function attachments(kind,id){
+    const rows=linkedFiles(kind,id);
+    return rows.length?'<div class="portal-attachments">'+rows.map(f=>'<a href="'+esc(f.file_url)+'" target="_blank" rel="noopener">▧ '+esc(f.file_name)+'</a>').join('')+'</div>':'';
+  }
+
+
   async function portalPost(body){
     const r=await fetch('/api/client-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json().catch(()=>({}));
@@ -215,16 +247,39 @@
 
   function requestsHtml(){
     const rows=portalData?.requests||[];
-    return `<div class="client-welcome"><div><div class="eyebrow">Operación</div><h1>Solicitudes</h1><p>Reporta errores, cambios, campañas o necesidades de contenido directamente a Segmenta.</p></div><button class="client-action" onclick="document.getElementById('requestFormWrap').classList.toggle('hidden')">＋ Nueva solicitud</button></div>
-    <div id="requestFormWrap" class="client-card hidden"><h3>Reportar problema o solicitud</h3><div class="client-form-grid">
-      <label>Tipo<select id="reqType"><option value="error">Error</option><option value="change">Cambio</option><option value="request">Solicitud</option><option value="content">Contenido</option><option value="campaign">Campaña</option><option value="other">Otro</option></select></label>
-      <label>Prioridad<select id="reqPriority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baja</option></select></label>
-      <label class="wide">Título<input id="reqTitle" placeholder="Ej. Cambiar precio del producto"></label>
-      <label class="wide">Descripción<textarea id="reqDescription" rows="4" placeholder="Describe lo que necesitas..."></textarea></label>
-      <label class="wide">Adjuntar captura o archivo<input id="reqFile" type="file" accept="image/*,application/pdf,video/mp4"></label>
-    </div><button class="client-action" onclick="submitClientRequest()">Enviar solicitud</button></div>
-    <div class="client-card"><h3>Historial</h3><div class="client-list">${rows.length?rows.map(x=>`<div class="client-list-item"><div><b>${esc(x.title)}</b><p>${esc(x.request_type)} · ${esc(x.priority)} · ${esc(x.status)}</p><small>${esc(x.description||'')}</small></div><div class="right">${date(x.created_at)}</div></div>`).join(''):'<div class="client-empty">No hay solicitudes registradas.</div>'}</div></div>`;
+    return '<div class="client-welcome"><div><div class="eyebrow">Soporte y cambios</div><h1>Solicitudes</h1><p>Reporta errores, cambios, campañas o necesidades de contenido.</p></div><button class="client-action" onclick="document.getElementById(\'requestFormWrap\').classList.toggle(\'hidden\')">＋ Nueva solicitud</button></div><div id="requestFormWrap" class="client-card hidden"><h3>Reportar problema o solicitud</h3><div class="client-form-grid"><label>Tipo<select id="reqType"><option value="error">Error</option><option value="change">Cambio</option><option value="request">Solicitud</option><option value="content">Contenido</option><option value="campaign">Campaña</option><option value="other">Otro</option></select></label><label>Prioridad<select id="reqPriority"><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option><option value="low">Baja</option></select></label><label class="wide">Título<input id="reqTitle" placeholder="Ej. Cambiar precio del producto"></label><label class="wide">Descripción<textarea id="reqDescription" rows="4" placeholder="Describe lo que necesitas..."></textarea></label><label class="wide">Adjuntar captura o archivo<input id="reqFile" type="file" accept="image/*,application/pdf,video/*"></label></div><button class="client-action" onclick="submitClientRequest()">Enviar solicitud</button></div><div class="portal-stack">'+(rows.length?rows.map(x=>'<article class="client-card portal-work-item"><div class="portal-work-head"><div><b>'+esc(x.title)+'</b><p>'+esc(x.description||'')+'</p></div><span class="portal-status '+statusClass(x.status)+'">'+esc(statusLabel(x.status))+'</span></div><div class="portal-work-meta"><span>'+esc(x.request_type)+'</span><span>Prioridad: '+esc(x.priority)+'</span><span>'+date(x.created_at)+'</span></div>'+attachments('request',x.id)+commentThread('request',x.id)+'</article>').join(''):'<div class="client-card client-empty">No hay solicitudes registradas.</div>')+'</div>';
   }
+
+  window.submitPortalTask=async function(){
+    try{
+      const created=await portalPost({action:'create_task',title:document.getElementById('taskTitle').value,description:document.getElementById('taskDescription').value,service_key:document.getElementById('taskService').value,priority:document.getElementById('taskPriority').value,due_at:document.getElementById('taskDue').value||null});
+      const file=document.getElementById('taskFile').files?.[0];
+      if(file){
+        const base64=await new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result).split(',')[1]);fr.onerror=reject;fr.readAsDataURL(file)});
+        await portalPost({action:'upload_file',task_id:created.task?.id||null,file_name:file.name,mime_type:file.type,file_base64:base64});
+      }
+      await load();showClientPage('tasks');
+    }catch(e){alert(e.message)}
+  };
+
+  window.addPortalComment=async function(type,id){
+    try{
+      const input=document.getElementById('comment_'+type+'_'+id),body=input?.value?.trim();if(!body)return;
+      await portalPost({action:'add_comment',entity_type:type,entity_id:id,body});await load();showClientPage(portalPage);
+    }catch(e){alert(e.message)}
+  };
+
+  window.setPortalTaskStatus=async function(id,status){
+    try{await portalPost({action:'set_task_status',task_id:id,status});await load();showClientPage('tasks')}catch(e){alert(e.message)}
+  };
+
+  window.uploadGeneralPortalFile=async function(){
+    try{
+      const file=document.getElementById('generalFile').files?.[0];if(!file)throw new Error('Selecciona un archivo');
+      const base64=await new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result).split(',')[1]);fr.onerror=reject;fr.readAsDataURL(file)});
+      await portalPost({action:'upload_file',file_name:file.name,mime_type:file.type,file_base64:base64});await load();showClientPage('files');
+    }catch(e){alert(e.message)}
+  };
 
   window.submitClientRequest=async function(){
     try{
@@ -240,35 +295,31 @@
 
   function filesHtml(){
     const rows=portalData?.files||[];
-    return `<div class="client-welcome"><div><div class="eyebrow">Recursos</div><h1>Archivos</h1><p>Material compartido entre tu equipo y Segmenta.</p></div></div><div class="client-card"><div class="client-list">${rows.length?rows.map(f=>`<div class="client-doc"><div class="client-doc-icon">▧</div><div class="client-doc-main"><b>${esc(f.file_name)}</b><span>${date(f.created_at)} · ${esc(f.uploaded_by_role||'')}</span></div><a href="${esc(f.file_url)}" target="_blank" rel="noopener">Abrir ↗</a></div>`).join(''):'<div class="client-empty">Aún no hay archivos compartidos.</div>'}</div></div>`;
+    return '<div class="client-welcome"><div><div class="eyebrow">Material compartido</div><h1>Archivos</h1><p>Fotos, videos, logos, catálogos, capturas y documentos.</p></div></div><div class="client-card" style="margin-bottom:12px"><h3>Subir archivo</h3><p>El archivo quedará asociado a tu cuenta y disponible para Segmenta.</p><div class="portal-upload-row"><input id="generalFile" type="file" accept="image/*,application/pdf,video/*,.csv,.xlsx,.doc,.docx"><button class="client-action" onclick="uploadGeneralPortalFile()">Subir</button></div></div><div class="client-card"><div class="client-list">'+(rows.length?rows.map(f=>'<div class="client-doc"><div class="client-doc-icon">▧</div><div class="client-doc-main"><b>'+esc(f.file_name)+'</b><span>'+date(f.created_at)+' · '+esc(f.uploaded_by_role==='client'?'Cliente':'Segmenta')+'</span></div><a href="'+esc(f.file_url)+'" target="_blank" rel="noopener">Abrir ↗</a></div>').join(''):'<div class="client-empty">Aún no hay archivos compartidos.</div>')+'</div></div>';
   }
 
   function announcementsHtml(){
     const rows=portalData?.announcements||[];
-    return `<div class="client-welcome"><div><div class="eyebrow">Novedades</div><h1>Anuncios</h1><p>Actualizaciones importantes sobre campañas, entregables y bloqueos.</p></div></div><div class="client-list">${rows.length?rows.map(a=>`<div class="client-card client-announcement"><b>${esc(a.title)}</b><span>${date(a.created_at)}</span><p>${esc(a.body)}</p></div>`).join(''):'<div class="client-card client-empty">Aún no hay anuncios.</div>'}</div>`;
+    return '<div class="client-welcome"><div><div class="eyebrow">Novedades</div><h1>Anuncios</h1><p>Actualizaciones sobre campañas, entregables, bloqueos y próximos pasos.</p></div></div><div class="portal-stack">'+(rows.length?rows.map(a=>'<article class="client-card portal-announcement"><div class="portal-work-head"><div><b>'+esc(a.title)+'</b><p>'+date(a.created_at)+'</p></div><span>Segmenta</span></div><p>'+esc(a.body)+'</p>'+commentThread('announcement',a.id)+'</article>').join(''):'<div class="client-card client-empty">Aún no hay anuncios.</div>')+'</div>';
   }
 
   function renderPage(){
     if(!portalData)return;
     const page=document.getElementById('page-client-'+portalPage);if(!page)return;
-    const renderers={
-      summary:summaryHtml,meta_ads:()=>adsHtml('meta_ads'),google_ads:()=>adsHtml('google_ads'),tiktok_ads:()=>adsHtml('tiktok_ads'),
-      organic_strategy:organicHtml,content_recording:()=>genericServiceHtml('content_recording'),editing:()=>genericServiceHtml('editing'),crm:crmHtml,tasks:tasksHtml,integrations:()=>genericServiceHtml('integrations'),
-      web:()=>genericServiceHtml('web'),landing:()=>genericServiceHtml('landing'),reports:reportsHtml,payments:paymentsHtml,
-      requests:requestsHtml,files:filesHtml,announcements:announcementsHtml
-    };
+    const renderers={summary:summaryHtml,services:servicesHubHtml,results:resultsHubHtml,tasks:tasksHtml,requests:requestsHtml,files:filesHtml,announcements:announcementsHtml,payments:paymentsHtml};
     page.innerHTML=(renderers[portalPage]||summaryHtml)();
   }
 
   function showClientPage(page){
-    if(!['summary','requests','files','announcements'].includes(page)&&!service(page).client_visible){page='summary'}
+    const allowed=['summary','services','results','tasks','requests','files','announcements','payments'];
+    if(!allowed.includes(page))page='summary';
     portalPage=page;
     document.querySelectorAll('.client-portal-page').forEach(x=>x.classList.add('hidden'));
     const el=document.getElementById('page-client-'+page);if(el)el.classList.remove('hidden');
     renderNav();renderPage();
-    const crumb=document.getElementById('crumbTitle');if(crumb)crumb.textContent=page==='summary'?'Inicio':({requests:'Solicitudes',files:'Archivos',announcements:'Anuncios'}[page]||SERVICE_UI[page]?.label||page);
+    const labels={summary:'Inicio',services:'Servicios',results:'Resultados',tasks:'Tareas',requests:'Solicitudes',files:'Archivos',announcements:'Anuncios',payments:'Pagos'};
+    const crumb=document.getElementById('crumbTitle');if(crumb)crumb.textContent=labels[page]||'Inicio';
   }
-  window.showClientPortalPage=showClientPage;
 
   async function load(){
     if(!clientMode())return;
