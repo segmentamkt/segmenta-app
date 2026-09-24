@@ -306,9 +306,14 @@ module.exports = async function handler(req,res){
           payment_status: ['current','due_soon','overdue','courtesy','tbd','paid'].includes(req.body?.payment_status) ? req.body.payment_status : 'current',
           payment_method_label: String(req.body?.payment_method_label || '').trim() || null,
           portal_settings: {
+            services: req.body?.portal_settings?.services !== false,
             results: req.body?.portal_settings?.results !== false,
-            crm: req.body?.portal_settings?.crm !== false,
+            tasks: req.body?.portal_settings?.tasks !== false,
+            requests: req.body?.portal_settings?.requests !== false,
+            files: req.body?.portal_settings?.files !== false,
+            announcements: req.body?.portal_settings?.announcements !== false,
             payments: req.body?.portal_settings?.payments !== false,
+            crm: req.body?.portal_settings?.crm === true,
             reports: req.body?.portal_settings?.reports !== false
           },
           updated_at: new Date().toISOString()
