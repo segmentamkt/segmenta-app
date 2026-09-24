@@ -42,6 +42,9 @@ body.crm-auth-gate #crmLoginModal{visibility:visible}.toast{position:fixed;left:
 @media(max-width:1000px){.inbox-shell{grid-template-columns:300px minmax(0,1fr)}.contact-pane{display:none}}
 @media(max-width:850px){.metric-grid{grid-template-columns:repeat(2,1fr)}.module-grid{grid-template-columns:1fr}.feature-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.admin-grid{grid-template-columns:1fr}.app{grid-template-columns:1fr}.sidebar{position:fixed;left:0;transform:translateX(-100%);transition:.2s;width:238px}.sidebar.open{transform:translateX(0)}.mobile-menu{display:block}.topbar{padding:0 14px}.content{padding:16px}.top-search{display:none}.page-head{flex-direction:column}.inbox-shell{grid-template-columns:1fr;height:calc(100vh - 125px)}.chat-pane{position:absolute;inset:0;z-index:3}.inbox-shell{position:relative}.chat-pane.mobile-hidden{display:none}.stats{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.board{min-width:1800px}.stats{grid-template-columns:1fr 1fr}}
+
+.client-crm-mode #hostBackLink{display:inline-flex!important;margin-top:8px;padding:7px 9px;border-radius:8px;background:#fff0dd;color:#b85e00;text-decoration:none;font-size:.63rem;font-weight:850}
+.client-crm-mode .logo small{color:#f0b870}.client-crm-mode .topbar .crumb{color:#8b7868}
 </style>
 <link rel="stylesheet" href="/integrations-ui.css?v=20260923-9">
 <link rel="stylesheet" href="/crm-execution-ui.css?v=20260923-7">
@@ -248,7 +251,7 @@ body.crm-auth-gate #crmLoginModal{visibility:visible}.toast{position:fixed;left:
 <div class="toast" id="toast"></div>
 <script>
 const STAGES=[['nuevo','Nuevo lead'],['contactado','Contactado'],['calificado','Calificado'],['reunion','Reunión agendada'],['propuesta','Propuesta enviada'],['ganado','Ganado'],['perdido','Perdido']];
-let currentOrgSlug='segmenta',KEY='segmenta_crm_v1_segmenta',leads=[],crmSession=null,adminOrganizations=[],adminMemberships=[];
+let currentOrgSlug='segmenta',KEY='segmenta_crm_v1_segmenta',leads=[],crmSession=null,adminOrganizations=[],adminMemberships=[],clientCrmAuthorized=false;
 function loadLocalLeads(){KEY='segmenta_crm_v1_'+currentOrgSlug;try{leads=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(_){leads=[]}}
 loadLocalLeads();
 let editing=null,currentView='board',currentPage='dashboard';let inboxConversations=[],activeConversationId=null,activeConversationData=null,inboxPoll=null,inboxAuthenticated=false,contactFormDirty=false;
@@ -318,13 +321,26 @@ async function ensureCrmAuth(loadInboxAfter=false){
       r=await fetch('/api/crm-auth',{cache:'no-store'});j=await r.json();
     }
     crmSession=j;
-    const previewMode=new URLSearchParams(location.search).get('client_preview')==='1';
+    const params=new URLSearchParams(location.search);
+    const previewMode=params.get('client_preview')==='1';
+    const clientCrmRequested=params.get('client_crm')==='1';
     if((j.role==='client'&&!j.platform_admin)||previewMode){
-      const qs=new URLSearchParams();
-      if(j.organization?.slug)qs.set('workspace',j.organization.slug);
-      if(previewMode)qs.set('client_preview','1');
-      location.replace('/portal'+(qs.toString()?'?'+qs.toString():''));
-      return false;
+      if(clientCrmRequested){
+        try{
+          const pr=await fetch('/api/client-portal',{cache:'no-store'}),pd=await pr.json();
+          const crmService=(pd.services||[]).find(x=>x.service_key==='crm');
+          clientCrmAuthorized=pr.ok&&pd.portal_settings?.crm===true&&crmService?.active_in_plan===true&&crmService?.client_visible===true&&crmService?.status!=='inactive';
+        }catch(_){clientCrmAuthorized=false}
+      }
+      if(!clientCrmAuthorized){
+        const qs=new URLSearchParams();
+        if(j.organization?.slug)qs.set('workspace',j.organization.slug);
+        if(previewMode)qs.set('client_preview','1');
+        location.replace('/portal'+(qs.toString()?'?'+qs.toString():''));
+        return false;
+      }
+    } else {
+      clientCrmAuthorized=false;
     }
     hideCrmLogin();
     currentOrgSlug=j.organization?.slug||currentOrgSlug||'segmenta';
@@ -338,11 +354,21 @@ async function ensureCrmAuth(loadInboxAfter=false){
 }
 function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||''}
 function renderCrmSession(){
-  const email=crmSession?.email||'CRM';
+  const email=crmSession?.email||'CRM',back=document.getElementById('hostBackLink');
   document.getElementById('orgContextName').textContent=crmSession?.organization?.name||'CRM';
-  document.getElementById('hostBackLink').classList.add('hidden');
+  if(clientCrmAuthorized){
+    document.body.classList.add('client-crm-mode');
+    back.classList.remove('hidden');
+    back.href='/portal?workspace='+encodeURIComponent(crmSession?.organization?.slug||'');
+    back.textContent='← Volver al portal';
+    document.getElementById('profileRole').textContent='CRM del cliente';
+    const crumb=document.querySelector('.crumb');if(crumb)crumb.firstChild.textContent='CRM / ';
+  }else{
+    document.body.classList.remove('client-crm-mode');
+    back.classList.add('hidden');
+    document.getElementById('profileRole').textContent=(crmSession?.platform_admin?'Host · ':'')+roleLabel(crmSession?.role);
+  }
   document.getElementById('profileName').textContent=crmSession?.organization?.name||'CRM';
-  document.getElementById('profileRole').textContent=(crmSession?.platform_admin?'Host · ':'')+roleLabel(crmSession?.role);
   document.getElementById('profileAvatar').textContent=(crmSession?.organization?.name||email||'S').charAt(0).toUpperCase();
   applyNavigationPermissions();
 }
