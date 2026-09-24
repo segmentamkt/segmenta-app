@@ -66,6 +66,14 @@ function resolveOrgId(session, body) {
     : String(session.organization_id || '').trim();
 }
 
+async function portalPermission(orgId, key) {
+  const client = await clientForOrg(orgId);
+  if (!client?.id) return { client:null, allowed:false };
+  const p = client.portal_settings || {};
+  const allowed = key === 'crm' ? p.crm === true : p[key] !== false;
+  return { client, allowed };
+}
+
 async function entityBelongsToClient(entityType, entityId, client, orgId) {
   if (!entityId || !client?.id) return false;
   if (entityType === 'task') {
@@ -104,6 +112,9 @@ async function portalPayload(orgId) {
     ]);
   }
 
+  const portalSettings = client?.portal_settings || {};
+  const canPortal = key => key === 'crm' ? portalSettings.crm === true : portalSettings[key] !== false;
+
   const serviceMap = Object.fromEntries((services || []).map(x => [x.service_key, x]));
   services = defaultServices().map(x => ({ ...x, ...(serviceMap[x.service_key] || {}) }));
 
@@ -121,8 +132,8 @@ async function portalPayload(orgId) {
     ok: true,
     organization: org,
     client,
-    portal_settings: client?.portal_settings || {},
-    services,
+    portal_settings: portalSettings,
+    services: canPortal('services') ? services : [],
     summary: {
       opportunities_open: open.length,
       pipeline_value: open.reduce((s,x)=>s+Number(x.value||0),0),
@@ -135,14 +146,14 @@ async function portalPayload(orgId) {
       tasks_overdue: openPortalTasks.filter(x=>x.due_at && new Date(x.due_at)<new Date()).length,
       requests_open: (requests || []).filter(x=>!['completed','closed'].includes(x.status)).length
     },
-    opportunities: opps || [],
-    tasks: portalTasks,
-    weekly_reports: reports || [],
-    analyses: analyses || [],
-    documents: documents || [],
-    requests: requests || [],
-    announcements: announcements || [],
-    files: files || [],
+    opportunities: (canPortal('results') || canPortal('crm')) ? (opps || []) : [],
+    tasks: canPortal('tasks') ? portalTasks : [],
+    weekly_reports: canPortal('results') ? (reports || []) : [],
+    analyses: canPortal('results') ? (analyses || []) : [],
+    documents: (canPortal('results') || canPortal('payments')) ? (documents || []) : [],
+    requests: canPortal('requests') ? (requests || []) : [],
+    announcements: canPortal('announcements') ? (announcements || []) : [],
+    files: canPortal('files') || canPortal('tasks') || canPortal('requests') ? (files || []) : [],
     comments: comments || []
   };
 }
@@ -169,8 +180,10 @@ module.exports = async function handler(req,res){
       if (action === 'create_request') {
         const orgId = resolveOrgId(session, req.body);
         if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
-        const client = await clientForOrg(orgId);
+        const perm = await portalPermission(orgId,'requests');
+        const client = perm.client;
         if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        if (!isPlatformAdmin(session) && !perm.allowed) return res.status(403).json({ok:false,error:'Solicitudes no habilitadas para esta cuenta'});
         const rows = await sb('client_requests',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
           client_id:client.id,organization_id:orgId,
           created_by_role:isPlatformAdmin(session)?'host':(session.role||'client'),
@@ -187,8 +200,10 @@ module.exports = async function handler(req,res){
       if (action === 'create_task') {
         const orgId = resolveOrgId(session, req.body);
         if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
-        const client = await clientForOrg(orgId);
+        const perm = await portalPermission(orgId,'tasks');
+        const client = perm.client;
         if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        if (!isPlatformAdmin(session) && !perm.allowed) return res.status(403).json({ok:false,error:'Tareas no habilitadas para esta cuenta'});
         const title=String(req.body?.title||'').trim();
         if(!title) return res.status(400).json({ok:false,error:'Título requerido'});
         const role=isPlatformAdmin(session)?'host':(session.role||'client');
@@ -232,6 +247,9 @@ module.exports = async function handler(req,res){
         const entityType=['task','request','announcement'].includes(req.body?.entity_type)?req.body.entity_type:'';
         const entityId=String(req.body?.entity_id||'').trim();
         const body=String(req.body?.body||'').trim();
+        const moduleKey=entityType==='task'?'tasks':entityType==='request'?'requests':'announcements';
+        const perm=await portalPermission(orgId,moduleKey);
+        if (!isPlatformAdmin(session) && !perm.allowed) return res.status(403).json({ok:false,error:'Módulo no habilitado para esta cuenta'});
         if(!entityType||!entityId||!body) return res.status(400).json({ok:false,error:'Comentario incompleto'});
         if(!await entityBelongsToClient(entityType,entityId,client,orgId)) return res.status(404).json({ok:false,error:'Elemento no encontrado'});
         const rows=await sb('client_comments',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
@@ -247,6 +265,11 @@ module.exports = async function handler(req,res){
         if (!orgId) return res.status(403).json({ok:false,error:'Workspace no disponible'});
         const client = await clientForOrg(orgId);
         if (!client?.id) return res.status(404).json({ok:false,error:'Perfil de cliente no configurado'});
+        if (!isPlatformAdmin(session)) {
+          const p=client.portal_settings||{};
+          const allowed = p.files !== false || (req.body?.task_id && p.tasks !== false) || (req.body?.request_id && p.requests !== false);
+          if(!allowed) return res.status(403).json({ok:false,error:'Carga de archivos no habilitada para esta cuenta'});
+        }
         const fileName=String(req.body?.file_name||'archivo').replace(/[^a-zA-Z0-9._-]/g,'_');
         const mime=String(req.body?.mime_type||'application/octet-stream');
         const raw=String(req.body?.file_base64||'');
