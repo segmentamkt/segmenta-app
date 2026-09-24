@@ -117,6 +117,8 @@ async function portalPayload(orgId) {
 
   const serviceMap = Object.fromEntries((services || []).map(x => [x.service_key, x]));
   services = defaultServices().map(x => ({ ...x, ...(serviceMap[x.service_key] || {}) }));
+  const crmService = services.find(x => x.service_key === 'crm');
+  const crmEntitled = canPortal('crm') && crmService?.active_in_plan === true && crmService?.client_visible === true && crmService?.status !== 'inactive';
 
   const portalTasks = (allTasks || []).filter(t => {
     const m = t.metadata || {};
@@ -133,6 +135,7 @@ async function portalPayload(orgId) {
     organization: org,
     client,
     portal_settings: portalSettings,
+    crm_access: crmEntitled,
     services: canPortal('services') ? services : [],
     summary: {
       opportunities_open: open.length,
