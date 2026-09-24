@@ -1,0 +1,78 @@
+/* Segmenta CRM visual refresh — non-destructive layer */
+:root{--surface:#fff;--surface-soft:#faf8f5;--surface-warm:#fffaf4;--shadow-soft:0 6px 22px rgba(46,28,16,.045);--radius-lg:16px;--radius-md:12px}
+body{background:#f6f3ef}
+.main{background:#f8f6f2}
+.topbar{backdrop-filter:blur(10px);background:rgba(255,255,255,.92);border-bottom:1px solid #e9e2da}
+.content{max-width:1550px;margin:0 auto;padding-top:22px}
+.page-head{align-items:flex-start;margin-bottom:18px}
+.page-head h1{letter-spacing:-.025em}
+.page-head p{max-width:760px;line-height:1.5}
+.eyebrow{letter-spacing:.11em;font-size:.62rem}
+.btn{border-radius:10px;min-height:36px;font-weight:800;transition:transform .12s ease,box-shadow .12s ease,background .12s ease}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(46,28,16,.07)}
+.btn.primary{box-shadow:0 4px 12px rgba(194,104,17,.14)}
+.metric-grid{gap:12px}
+.metric-card{border-radius:14px;border:1px solid #e7dfd6;box-shadow:var(--shadow-soft);background:linear-gradient(180deg,#fff,#fefdfb)}
+.metric-card .k{font-weight:850;letter-spacing:.025em}
+.metric-card .v{letter-spacing:-.035em}
+.module-grid{gap:14px}
+.module-card,.workspace{border-radius:var(--radius-lg);border:1px solid #e7dfd6;box-shadow:var(--shadow-soft);background:#fff}
+.module-card h3{letter-spacing:-.01em}
+.module-card>p{line-height:1.5}
+.crm-table thead th{background:#faf8f5;color:#7b6f64;font-size:.62rem;text-transform:uppercase;letter-spacing:.055em;font-weight:900;position:sticky;top:0;z-index:1}
+.crm-table tbody tr{transition:background .12s ease}
+.crm-table tbody tr:hover{background:#fffcf8}
+.crm-table td{vertical-align:middle}
+.field label{font-weight:850;color:#76695f;font-size:.64rem}
+.field input,.field select,.field textarea{border-radius:10px;border-color:#dfd7cf;background:#fff;transition:border-color .12s ease,box-shadow .12s ease}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#c88a48;box-shadow:0 0 0 3px rgba(200,138,72,.11)}
+.state,.status-pill,.cap-chip,.role-pill{font-weight:850}
+.nav-item{border-radius:9px;margin:1px 8px;width:calc(100% - 16px);transition:background .12s ease,transform .12s ease}
+.nav-item:hover{transform:translateX(1px)}
+.nav-item.active{box-shadow:inset 3px 0 0 #e08419}
+.sidebar{box-shadow:8px 0 30px rgba(40,24,12,.04)}
+.inbox-layout{border-radius:16px;overflow:hidden;border:1px solid #e7dfd6;box-shadow:var(--shadow-soft)}
+.conversation-item{transition:background .12s ease}
+.conversation-item:hover{background:#fffaf3}
+.detail-pane input,.detail-pane textarea,.detail-pane select{border-radius:10px}
+.execution-hero{border-color:#eadfd4!important}
+.execution-primary{box-shadow:0 5px 14px rgba(110,62,16,.16)}
+.hidden{display:none!important}
+@media(max-width:900px){.content{padding-top:16px}.page-head{gap:10px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.metric-grid{grid-template-columns:1fr}.page-head{flex-direction:column}.page-head>.btn{width:100%}}
+
+
+/* Inbox viewport fix — keep composer always visible */
+#page-inbox:not(.hidden){
+  display:flex;
+  flex-direction:column;
+  height:calc(100dvh - 66px);
+  min-height:0;
+  overflow:hidden;
+}
+#page-inbox:not(.hidden) .page-head{flex:0 0 auto}
+#page-inbox:not(.hidden) .inbox-shell{
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+}
+#page-inbox .chat-pane{min-height:0;overflow:hidden}
+#page-inbox #chatContent:not(.hidden){
+  display:grid!important;
+  grid-template-rows:66px minmax(0,1fr) auto auto;
+  height:100%!important;
+  min-height:0;
+  overflow:hidden;
+}
+#page-inbox .messages{min-height:0;overflow:auto}
+#page-inbox .chat-compose{
+  position:relative;
+  z-index:4;
+  flex:0 0 auto;
+  box-shadow:0 -5px 18px rgba(46,28,16,.035);
+}
+#page-inbox .chat-foot{flex:0 0 auto}
+@media(max-width:850px){
+  #page-inbox:not(.hidden){height:calc(100dvh - 66px)}
+  #page-inbox:not(.hidden) .inbox-shell{height:auto!important;min-height:0}
+}

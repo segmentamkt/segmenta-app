@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/crm",
+      "destination": "/crm.html"
+    },
+    {
+      "source": "/host",
+      "destination": "/host-crm.html"
+    },
+    {
+      "source": "/portal",
+      "destination": "/portal.html"
+    }
+  ]
+}

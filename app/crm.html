@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+(function(){
+  if (location.hostname.endsWith('.vercel.app')) {
+    location.replace('https://app.segmenta.online' + location.pathname + location.search + location.hash);
+  }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Segmenta CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--surface:#fff;--surface2:#fbf9f5;--sidebar:#2c1c10;--brand:#e87f00;--brand2:#c96a00;--brandsoft:#fff0dd;--ink:#2d241d;--muted:#7e746b;--line:#e8e2da;--green:#2e9e6b;--greensoft:#eaf7f1;--amber:#d99a19;--ambersoft:#fff6df;--red:#c74c3b;--redsoft:#fdedea;--blue:#4b79c8;--bluesoft:#eef4ff;--display:'Space Grotesk',system-ui,sans-serif;--body:'Inter',system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:var(--body);color:var(--ink);background:var(--bg)}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}.app{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}
+.sidebar{position:sticky;top:0;height:100vh;background:var(--sidebar);color:#fff;padding:22px 14px;display:flex;flex-direction:column;z-index:30;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}.sidebar>.logo,.sidebar>.org-context,.sidebar>.nav-label,.sidebar>.nav-item{flex-shrink:0}.logo{display:flex;align-items:center;gap:10px;padding:0 10px 22px;font-family:var(--display);font-weight:700}.logo-mark{width:34px;height:34px;border-radius:11px;background:var(--brand);display:grid;place-items:center;font-weight:800}.logo small{display:block;color:#bfae9f;font-family:var(--body);font-size:.66rem;letter-spacing:.08em}.nav-label{font-size:.64rem;text-transform:uppercase;letter-spacing:.12em;color:#9d8978;font-weight:700;margin:14px 10px 7px}.nav-item{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:10px;color:#dccfc4;font-size:.88rem;font-weight:600;margin:2px 0;border:0;background:transparent;width:100%;text-align:left}.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}.nav-item.active{background:rgba(232,127,0,.18);color:#fff}.ico{width:20px;text-align:center}.nav-count{margin-left:auto;background:var(--brand);color:#fff;border-radius:999px;padding:2px 7px;font-size:.66rem}.sidebar-bottom{margin-top:18px;border-top:1px solid rgba(255,255,255,.09);padding-top:14px;flex-shrink:0;position:relative;background:var(--sidebar);z-index:2}.profile{display:flex;align-items:center;gap:10px;padding:10px}.avatar{width:34px;height:34px;border-radius:50%;background:#fff1dd;color:var(--brand2);display:grid;place-items:center;font-weight:800}.profile .name{font-size:.82rem;font-weight:700}.profile .role{font-size:.7rem;color:#a99888}
+.main{min-width:0}.topbar{height:66px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 24px;position:sticky;top:0;z-index:20}.crumb{font-size:.82rem;color:var(--muted)}.crumb b{color:var(--ink)}.top-search{margin-left:auto;position:relative;width:min(360px,42vw)}.top-search input{width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:10px 12px;color:var(--ink);outline:none}.icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--muted)}.mobile-menu{display:none;border:0;background:transparent;font-size:1.2rem}
+.content{padding:24px;max-width:1800px;margin:0 auto}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}.eyebrow{font-size:.7rem;color:var(--brand2);font-weight:800;text-transform:uppercase;letter-spacing:.1em}.page-head h1{font-family:var(--display);font-size:1.9rem;line-height:1.15;margin:5px 0}.page-head p{margin:0;color:var(--muted);font-size:.9rem}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 13px;font-size:.82rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn:hover{border-color:#cfc5bb;background:#fcfaf7}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.primary:hover{background:var(--brand2)}.btn.danger{color:var(--red);border-color:#eed0ca;background:#fff}.btn.danger:hover{background:var(--redsoft)}.btn.full{width:100%}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px}.stat .label{font-size:.72rem;color:var(--muted);font-weight:700}.stat .value{font-family:var(--display);font-size:1.55rem;font-weight:700;margin-top:6px}.stat .hint{font-size:.68rem;color:var(--muted);margin-top:2px}
+.workspace{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 3px 12px rgba(57,39,23,.03)}.toolbar{padding:12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar input,.toolbar select{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 10px;color:var(--ink);font-size:.82rem}.toolbar input{min-width:260px;flex:1}.view-toggle{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}.view-toggle button{border:0;background:#fff;padding:9px 11px;color:var(--muted);font-weight:700;font-size:.78rem}.view-toggle button.active{background:var(--brandsoft);color:var(--brand2)}
+.board-shell{overflow:auto;background:#f8f7f4}.board{display:grid;grid-template-columns:repeat(7,minmax(255px,1fr));gap:12px;min-width:1880px;padding:14px}.col{background:#f1eee9;border:1px solid #e5ded5;border-radius:13px;min-height:560px;padding:9px}.colh{display:flex;align-items:center;justify-content:space-between;padding:5px 5px 10px}.col-title{font-size:.79rem;font-weight:800}.count{font-size:.68rem;color:var(--muted);background:#fff;border:1px solid var(--line);padding:2px 7px;border-radius:999px}.cards{display:flex;flex-direction:column;gap:8px}.lead{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 3px 10px rgba(55,40,26,.03)}.lead:hover{border-color:#d7ccbf}.lead-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.lead h3{font-size:.88rem;margin:0 0 3px}.company{font-size:.73rem;color:var(--muted)}.lead-actions{display:flex;gap:3px}.tiny-btn{width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:.8rem}.tiny-btn:hover{background:#f6f2ed}.tiny-btn.danger:hover{background:var(--redsoft);color:var(--red)}.tags{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}.tag{font-size:.63rem;font-weight:800;padding:3px 7px;border-radius:999px;background:var(--brandsoft);color:var(--brand2)}.tag.meta{background:var(--bluesoft);color:#3565ae}.tag.green{background:var(--greensoft);color:var(--green)}.lead-info{display:grid;grid-template-columns:1fr 1fr;gap:7px 8px;padding:9px 0;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line)}.info-k{font-size:.61rem;color:var(--muted);text-transform:uppercase;font-weight:700}.info-v{font-size:.71rem;font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis}.leadfoot{font-size:.67rem;color:var(--muted);margin-top:9px}.empty{padding:25px 8px;text-align:center;color:#a49a91;font-size:.76rem;border:1px dashed #d9d1c8;border-radius:10px;background:rgba(255,255,255,.45)}
+.table-wrap{overflow:auto}.crm-table{width:100%;border-collapse:collapse}.crm-table th{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:11px 14px;background:#faf8f5;border-bottom:1px solid var(--line)}.crm-table td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:.8rem}.crm-table tr:hover td{background:#fffcf8}.status-pill{font-size:.68rem;font-weight:800;border-radius:999px;padding:4px 8px;background:#f1eee9;color:#5f554d}
+.placeholder{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;max-width:1000px}.placeholder h3{font-family:var(--display);margin:0 0 6px}.placeholder p{color:var(--muted);font-size:.8rem;line-height:1.55;margin:0}.channel-list{display:grid;gap:12px;max-width:1100px}.channel-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px}.channel-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:1.35rem;background:var(--surface2)}.channel-icon.fb{background:#eef4ff;color:#1877f2}.channel-icon.wa{background:#eaf9ef;color:#25d366}.channel-icon.ig{background:#f7eefb;color:#a23dc1}.channel-body{flex:1}.channel-name{font-size:.98rem;font-weight:800}.channel-desc{font-size:.75rem;color:var(--muted);margin-top:4px}.state{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:.65rem;font-weight:800}.state.ok{background:var(--greensoft);color:var(--green)}.state.off{background:#f1eee9;color:#7f7469}.state.wait{background:var(--ambersoft);color:#a8730d}
+.inbox-shell{height:calc(100vh - 150px);min-height:590px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:330px minmax(380px,1fr) 320px;box-shadow:0 3px 12px rgba(57,39,23,.03)}.inbox-list-pane{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}.inbox-list-head{padding:14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.inbox-title{font-weight:800;font-size:.9rem}.inbox-live{font-size:.66rem;font-weight:800;color:var(--green);background:var(--greensoft);padding:5px 8px;border-radius:999px}.conversation-list{overflow:auto;flex:1}.conversation-item{width:100%;border:0;border-bottom:1px solid var(--line);background:#fff;text-align:left;padding:14px;display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;align-items:start}.conversation-item:hover{background:#fcfaf7}.conversation-item.active{background:#fff8ef}.conv-avatar{width:42px;height:42px;border-radius:50%;background:var(--bluesoft);color:#1877f2;display:grid;place-items:center;font-weight:900;overflow:hidden}.conv-avatar img{width:100%;height:100%;object-fit:cover}.conv-main{min-width:0}.conv-name{font-size:.82rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.conv-meta{font-size:.66rem;color:var(--muted);margin-top:2px}.conv-preview{font-size:.73rem;color:#655c54;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.conv-side{text-align:right;min-width:45px}.conv-time{font-size:.61rem;color:var(--muted)}.unread{margin-top:8px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--brand);color:#fff;display:inline-grid;place-items:center;font-size:.62rem;font-weight:800}
+.chat-pane{display:flex;flex-direction:column;min-width:0;background:#f8f7f4}.chat-empty{height:100%;display:grid;place-items:center;color:var(--muted);text-align:center;padding:30px}.chat-head{height:66px;padding:11px 16px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}.chat-contact{display:flex;align-items:center;gap:10px;min-width:0}.chat-contact-name{font-weight:800;font-size:.84rem}.chat-contact-meta{font-size:.66rem;color:var(--muted);margin-top:2px}.messages{padding:18px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px}.message-row{display:flex}.message-row.outbound{justify-content:flex-end}.bubble{max-width:min(680px,78%);padding:9px 11px;border-radius:13px;background:#fff;border:1px solid var(--line);box-shadow:0 2px 6px rgba(50,35,22,.03)}.message-row.outbound .bubble{background:var(--brandsoft);border-color:#f4d2aa}.msg-text{font-size:.78rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}.msg-time{font-size:.59rem;color:var(--muted);margin-top:5px;text-align:right}.chat-compose{padding:10px 14px;border-top:1px solid var(--line);background:#fff}.chat-compose-row{display:flex;gap:8px;align-items:flex-end}.chat-compose textarea{flex:1;min-height:44px;max-height:120px;resize:vertical;border:1px solid var(--line);border-radius:11px;padding:10px 11px;outline:none;font-size:.78rem;line-height:1.4}.chat-compose textarea:focus{border-color:#d6a264;box-shadow:0 0 0 3px rgba(232,127,0,.08)}.chat-compose textarea:disabled{background:#f5f3ef;color:#9d948b}.chat-compose .btn{min-width:88px;height:44px}.chat-compose-note{font-size:.6rem;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;gap:10px}.chat-compose-note.error{color:var(--red)}.chat-foot{padding:8px 14px;border-top:1px solid var(--line);background:#fff;font-size:.62rem;color:var(--muted);display:flex;justify-content:space-between}
+.contact-pane{border-left:1px solid var(--line);background:#fff;overflow:auto}.contact-head{padding:18px;border-bottom:1px solid var(--line);text-align:center}.contact-avatar{width:68px;height:68px;border-radius:50%;margin:0 auto 10px;background:var(--bluesoft);color:#1877f2;display:grid;place-items:center;font-weight:900;font-size:1.15rem;overflow:hidden}.contact-avatar img{width:100%;height:100%;object-fit:cover}.contact-head-name{font-family:var(--display);font-weight:700}.contact-head-meta{font-size:.68rem;color:var(--muted);margin-top:3px}.contact-body{padding:16px}.detail-section{margin-bottom:18px}.detail-section-title{font-size:.63rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:9px}.field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}.field label{font-size:.66rem;color:var(--muted);font-weight:700}.field input,.field select,.field textarea{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 10px;color:var(--ink);outline:none;font-size:.76rem;width:100%}.field textarea{min-height:78px;resize:vertical}.readonly{background:var(--surface2)!important;color:#675e56!important}.contact-actions{display:grid;gap:8px}.info-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f0ece7;font-size:.7rem}.info-row span:first-child{color:var(--muted)}.info-row span:last-child{text-align:right;font-weight:600;overflow-wrap:anywhere}.inbox-loading,.inbox-error{padding:22px;text-align:center;color:var(--muted);font-size:.75rem}.inbox-error{color:var(--red)}
+.drawer-backdrop{position:fixed;inset:0;background:rgba(35,24,16,.28);display:none;z-index:40}.drawer-backdrop.open{display:block}.drawer{position:fixed;right:0;top:0;height:100vh;width:min(560px,100vw);background:#fff;z-index:50;transform:translateX(100%);transition:.2s;box-shadow:-18px 0 45px rgba(48,33,21,.16);display:flex;flex-direction:column}.drawer.open{transform:translateX(0)}.drawer-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.drawer-title{font-family:var(--display);font-size:1.15rem;font-weight:700}.drawer-sub{font-size:.76rem;color:var(--muted);margin-top:3px}.drawer-body{padding:18px 20px;overflow:auto;flex:1}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field.full{grid-column:1/-1}.drawer-foot{padding:13px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}.modal-backdrop{position:fixed;inset:0;background:rgba(36,25,17,.42);z-index:90;display:grid;place-items:center;padding:20px}.login-card{width:min(420px,100%);background:#fff;border-radius:16px;border:1px solid var(--line);box-shadow:0 24px 70px rgba(42,29,19,.2);padding:24px}.login-card h2{font-family:var(--display);margin:0 0 6px}.login-card p{font-size:.77rem;color:var(--muted);line-height:1.5}.login-error{font-size:.7rem;color:var(--red);margin-top:8px}
+#crmLoginModal{background:var(--bg);z-index:200}
+#crmLoginModal .login-card{width:min(440px,100%);padding:30px;border-radius:20px;box-shadow:0 24px 70px rgba(42,29,19,.14)}
+.portal-login-brand{display:flex;align-items:center;gap:11px;margin-bottom:18px}.portal-login-mark{width:42px;height:42px;border-radius:12px;background:var(--brand);display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:900}.portal-login-brand b{display:block;font-family:var(--display);font-size:1rem}.portal-login-brand span{display:block;color:var(--muted);font-size:.65rem;margin-top:2px}
+#crmLoginModal .field input{background:#fff}
+#crmLoginModal .login-submit{width:100%;justify-content:center;margin-top:6px;padding:11px 14px}
+body.crm-auth-gate>.app{visibility:hidden}
+body.crm-auth-gate #crmLoginModal{visibility:visible}.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,18px);background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;font-size:.78rem;font-weight:700;opacity:0;pointer-events:none;transition:.2s;z-index:100}.toast.show{opacity:1;transform:translate(-50%,0)}
+.org-switch{padding:0 10px 14px}.org-switch label{display:block;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:#9d8978;font-weight:800;margin-bottom:5px}.org-switch select{width:100%;border:1px solid rgba(255,255,255,.12);background:#382517;color:#fff;border-radius:9px;padding:8px 9px;font-size:.75rem;outline:none}.org-context{padding:0 10px 14px}.org-context label{display:block;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:#9d8978;font-weight:800;margin-bottom:5px}.org-context-box{border:1px solid rgba(255,255,255,.12);background:#382517;color:#fff;border-radius:9px;padding:8px 9px;font-size:.75rem;display:flex;align-items:center;gap:8px}.org-context-box span{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}.org-context-box a{margin-left:auto;color:#f2b56d;font-size:.65rem;text-decoration:none;font-weight:800;white-space:nowrap}.profile-actions{margin-left:auto}.logout-btn{border:0;background:transparent;color:#bba998;font-size:.72rem;padding:5px;cursor:pointer}.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.admin-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.admin-card h3{font-family:var(--display);margin:0 0 5px}.admin-card>p{margin:0 0 14px;color:var(--muted);font-size:.76rem}.admin-form{display:grid;gap:9px;margin-bottom:16px}.admin-form.two{grid-template-columns:1fr 1fr}.admin-form .full{grid-column:1/-1}.mini-table{width:100%;border-collapse:collapse}.mini-table th,.mini-table td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:.72rem;text-align:left}.mini-table th{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.05em}.role-pill{display:inline-flex;padding:3px 7px;border-radius:999px;background:var(--surface2);font-size:.62rem;font-weight:800}.admin-note{font-size:.7rem;color:var(--muted);line-height:1.45;margin-top:10px}
+.metric-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:16px}.metric-card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px}.metric-card .k{font-size:.66rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}.metric-card .v{font-family:var(--display);font-size:1.55rem;font-weight:800;margin-top:7px}.metric-card .s{font-size:.67rem;color:var(--muted);margin-top:3px}.module-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.module-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.module-card h3{font-family:var(--display);margin:0 0 5px}.module-card p{margin:0 0 14px;color:var(--muted);font-size:.76rem}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.form-grid .full{grid-column:1/-1}.inline-actions{display:flex;gap:7px;flex-wrap:wrap}.cap-chip{display:inline-flex;border-radius:999px;padding:4px 8px;background:var(--ambersoft);color:#9b6b0d;font-size:.64rem;font-weight:800}.empty-state{padding:30px;text-align:center;color:var(--muted);font-size:.78rem}.module-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.module-tabs button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;font-size:.72rem;font-weight:700}.module-tabs button.active{background:var(--brandsoft);color:var(--brand2);border-color:#f1d0aa}.feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.feature-card{border:1px solid var(--line);background:#fff;border-radius:14px;padding:16px}.feature-card b{font-family:var(--display)}.feature-card p{font-size:.72rem;color:var(--muted);line-height:1.5;margin:7px 0 0}.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--green);margin-right:6px}
+.permission-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface2);overflow:hidden}.permission-grid label{font-size:.7rem;color:var(--ink);display:flex;align-items:center;gap:7px;min-width:0;line-height:1.25;white-space:normal;overflow:visible}.permission-grid input[type="checkbox"]{width:16px!important;height:16px!important;min-width:16px!important;max-width:16px!important;flex:0 0 16px!important;margin:0!important;padding:0!important;accent-color:var(--brand);box-shadow:none!important}.permission-grid label span{min-width:0;overflow-wrap:anywhere}@media(max-width:850px){.permission-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:1250px){.metric-grid{grid-template-columns:repeat(3,1fr)}.feature-grid{grid-template-columns:repeat(2,1fr)}.inbox-shell{grid-template-columns:300px minmax(360px,1fr) 285px}.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1000px){.inbox-shell{grid-template-columns:300px minmax(0,1fr)}.contact-pane{display:none}}
+@media(max-width:850px){.metric-grid{grid-template-columns:repeat(2,1fr)}.module-grid{grid-template-columns:1fr}.feature-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.admin-grid{grid-template-columns:1fr}.app{grid-template-columns:1fr}.sidebar{position:fixed;left:0;transform:translateX(-100%);transition:.2s;width:238px}.sidebar.open{transform:translateX(0)}.mobile-menu{display:block}.topbar{padding:0 14px}.content{padding:16px}.top-search{display:none}.page-head{flex-direction:column}.inbox-shell{grid-template-columns:1fr;height:calc(100vh - 125px)}.chat-pane{position:absolute;inset:0;z-index:3}.inbox-shell{position:relative}.chat-pane.mobile-hidden{display:none}.stats{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.board{min-width:1800px}.stats{grid-template-columns:1fr 1fr}}
+</style>
+<link rel="stylesheet" href="/integrations-ui.css?v=20260923-9">
+<link rel="stylesheet" href="/crm-execution-ui.css?v=20260923-7">
+<link rel="stylesheet" href="/crm-visual-refresh.css?v=20260923-7">
+<link rel="stylesheet" href="/crm-pipeline-ui.css?v=20260923-10">
+<link rel="stylesheet" href="/crm-qa-simulator.css?v=20260923-8">
+<link rel="stylesheet" href="/crm-sales-os.css?v=20260923-2">
+<link rel="stylesheet" href="/crm-client-portal.css?v=20260923-4">
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="logo"><div class="logo-mark">S</div><div>Segmenta<small>CRM CENTRAL</small></div></div>
+  <div class="org-context"><label>Workspace</label><div class="org-context-box"><span id="orgContextName">CRM</span><a id="hostBackLink" class="hidden" href="/host">Panel Host</a></div></div>
+  <div class="nav-label">Inicio</div>
+  <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><span class="ico">▶</span>Ejecución</button>
+  <button class="nav-item" data-page="inbox" onclick="showPage('inbox',this)"><span class="ico">✉</span>Bandeja<span class="nav-count hidden" id="inboxNavCount">0</span></button>
+  <div class="nav-label">Comercial</div>
+  <button class="nav-item" data-page="crm" onclick="showPage('crm',this)"><span class="ico">◫</span>CRM</button>
+  <button class="nav-item" data-page="cap" onclick="showPage('cap',this)"><span class="ico">⇢</span>Pipeline / CAP</button>
+  <button class="nav-item" data-page="quotes" onclick="showPage('quotes',this)"><span class="ico">▧</span>Cotizaciones</button>
+  <button class="nav-item" data-page="orders" onclick="showPage('orders',this)"><span class="ico">▣</span>Pedidos</button>
+  <button class="nav-item" data-page="contacts" onclick="showPage('contacts',this)"><span class="ico">◎</span>Clientes / Contactos</button>
+  <button class="nav-item" data-page="tasks" onclick="showPage('tasks',this)"><span class="ico">✓</span>Tareas</button>
+  <button class="nav-item hidden" data-page="qa" onclick="showPage('qa',this)"><span class="ico">◈</span>Simulador QA</button>
+  <div class="nav-label">Automatización</div>
+  <button class="nav-item" data-page="ai" onclick="showPage('ai',this)"><span class="ico">✦</span>Agente IA</button>
+  <button class="nav-item" data-page="automations" onclick="showPage('automations',this)"><span class="ico">↯</span>Automatizaciones</button>
+  <div class="nav-label">Inteligencia</div>
+  <button class="nav-item" data-page="analytics" onclick="showPage('analytics',this)"><span class="ico">▤</span>Analítica</button>
+  <div class="nav-label">Configuración</div>
+  <button class="nav-item" data-page="integrations" onclick="showPage('integrations',this)"><span class="ico">↔</span>Integraciones</button>
+  <button class="nav-item" data-page="admin" onclick="showPage('admin',this)"><span class="ico">♙</span>Usuarios</button>
+  <button class="nav-item" data-page="settings" onclick="showPage('settings',this)"><span class="ico">⚙</span>Configuración</button>
+  <div class="sidebar-bottom"><div class="profile"><div class="avatar" id="profileAvatar">S</div><div><div class="name" id="profileName">CRM</div><div class="role" id="profileRole">Sin sesión</div></div><div class="profile-actions"><button class="logout-btn" onclick="logoutCrm()" title="Cerrar sesión">Salir</button></div></div></div>
+</aside>
+<main class="main">
+<header class="topbar"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="crumb">Admin / <b id="crumbTitle">Ejecución</b></div><span style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;background:var(--greensoft);color:var(--green);font-size:.62rem;font-weight:900">● FLUJO GUIADO ACTIVO</span><div class="top-search" id="globalSearch"><input id="topQ" placeholder="Buscar lead, empresa o teléfono..." oninput="syncSearch(this.value)"></div><button class="icon-btn" onclick="refreshCurrentPage()">↻</button></header>
+
+<section class="content" id="page-dashboard">
+  <div class="page-head"><div><div class="eyebrow">Sistema comercial</div><h1>Centro de ejecución</h1><p>El CRM define qué hacer ahora, valida el resultado y genera automáticamente el siguiente paso.</p></div><button class="btn" onclick="loadDashboard()">↻ Actualizar</button></div>
+  <div class="metric-grid">
+    <div class="metric-card"><div class="k">Oportunidades</div><div class="v" id="mOpportunities">0</div><div class="s">Pipeline abierto</div></div>
+    <div class="metric-card"><div class="k">Valor pipeline</div><div class="v" id="mPipelineValue">$0</div><div class="s">COP</div></div>
+    <div class="metric-card"><div class="k">Cotizaciones</div><div class="v" id="mQuotes">0</div><div class="s">Abiertas</div></div>
+    <div class="metric-card"><div class="k">Pedidos</div><div class="v" id="mOrders">0</div><div class="s">Activos</div></div>
+    <div class="metric-card"><div class="k">Tareas</div><div class="v" id="mTasks">0</div><div class="s">Pendientes</div></div>
+    <div class="metric-card"><div class="k">Ventas ganadas</div><div class="v" id="mWonValue">$0</div><div class="s">Valor acumulado</div></div>
+  </div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Pipeline por etapa</h3><p>Distribución de oportunidades de la empresa activa.</p><div id="dashboardStages" class="empty-state">Cargando...</div></section>
+    <section class="module-card"><h3>Estado del ecosistema</h3><p>Infraestructura que no debemos romper durante la migración.</p><div class="feature-grid"><div class="feature-card"><b><span class="status-dot"></span>Bandeja</b><p>Messenger e Instagram continúan usando el webhook existente.</p></div><div class="feature-card"><b><span class="status-dot"></span>Multiempresa</b><p>Todos los módulos nuevos se filtran por organization_id.</p></div><div class="feature-card"><b><span class="status-dot"></span>Auditoría</b><p>Acciones sensibles quedan registradas por empresa y usuario.</p></div></div></section>
+  </div>
+</section>
+
+<section class="content hidden" id="page-crm">
+  <div class="page-head"><div><div class="eyebrow">Comercial</div><h1>CRM</h1><p>Oportunidades centralizadas en Supabase, compartidas por todos los usuarios de la empresa.</p></div><button class="btn" onclick="loadOpportunities()">↻ Actualizar</button></div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Nueva oportunidad</h3><p>Se crea automáticamente con un registro CAP activo.</p>
+      <form class="form-grid" onsubmit="createOpportunity(event)">
+        <div class="field full"><label>Nombre de la oportunidad</label><input id="oppTitle" required placeholder="Ej. Venta mayorista Bogotá"></div>
+        <div class="field"><label>Etapa</label><select id="oppStage"><option value="new">Nuevo</option><option value="contacted">Contactado</option><option value="qualified">Calificado</option><option value="proposal">Propuesta</option><option value="negotiation">Negociación</option></select></div>
+        <div class="field"><label>Valor estimado</label><input id="oppValue" type="number" min="0" step="1000"></div>
+        <div class="field"><label>Producto</label><input id="oppProduct"></div>
+        <div class="field"><label>Ciudad</label><input id="oppCity"></div>
+        <div class="field"><label>Origen</label><input id="oppSource" placeholder="Instagram, Messenger, WhatsApp..."></div>
+        <div class="field"><label>Próximo seguimiento</label><input id="oppFollowup" type="datetime-local"></div>
+        <div class="field full"><label>Notas</label><textarea id="oppNotes"></textarea></div>
+        <button class="btn primary full" type="submit">＋ Crear oportunidad</button>
+      </form>
+    </section>
+    <section class="module-card"><h3>Metodología CAP</h3><p>Cada oportunidad mantiene paso, decisión, etiqueta, próxima acción, secuencia y cierre.</p><div class="feature-grid"><div class="feature-card"><b>Reinicio</b><p>CAP puede reiniciarse cuando entra una conversación nueva o cuando interviene un vendedor.</p></div><div class="feature-card"><b>Seguimiento</b><p>Próxima acción y fecha quedan listas para automatización.</p></div><div class="feature-card"><b>Escalamiento</b><p>La estructura soporta llamada o seguimiento por falta de respuesta.</p></div></div></section>
+  </div>
+  <section class="workspace" style="margin-top:16px"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Oportunidad</th><th>Etapa</th><th>Valor</th><th>Producto</th><th>Ciudad</th><th>CAP</th><th>Seguimiento</th></tr></thead><tbody id="opportunitiesBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-cap">
+  <div class="page-head"><div><div class="eyebrow">Metodología comercial</div><h1>Pipeline / CAP</h1><p>Seguimiento operativo de cada oportunidad.</p></div><button class="btn" onclick="loadCap()">↻ Actualizar</button></div>
+  <section class="workspace"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Oportunidad</th><th>Etapa</th><th>Paso CAP</th><th>Decisión</th><th>Etiqueta</th><th>Próxima acción</th><th>Secuencia</th><th>Acciones</th></tr></thead><tbody id="capBody"><tr><td colspan="8">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-quotes">
+  <div class="page-head"><div><div class="eyebrow">Ventas</div><h1>Cotizaciones</h1><p>Crea cotizaciones y conviértelas en pedido sin salir del CRM.</p></div><button class="btn" onclick="loadQuotes()">↻ Actualizar</button></div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Nueva cotización</h3><p>Versión inicial con una línea de producto; la estructura admite múltiples ítems.</p>
+      <form class="form-grid" onsubmit="createQuote(event)">
+        <div class="field full"><label>Producto / descripción</label><input id="quoteDescription" required></div>
+        <div class="field"><label>Cantidad</label><input id="quoteQty" type="number" min="0.001" step="1" value="1" required></div>
+        <div class="field"><label>Precio unitario</label><input id="quoteUnitPrice" type="number" min="0" step="100" required></div>
+        <div class="field"><label>Descuento total</label><input id="quoteDiscount" type="number" min="0" step="100" value="0"></div>
+        <div class="field"><label>Costo de envío</label><input id="quoteShipping" type="number" min="0" step="100" value="0"></div>
+        <div class="field"><label>Vigencia</label><input id="quoteValidUntil" type="date"></div>
+        <div class="field full"><label>Observaciones</label><textarea id="quoteObservations"></textarea></div>
+        <button class="btn primary full" type="submit">＋ Crear cotización</button>
+      </form>
+    </section>
+    <section class="module-card"><h3>Flujo</h3><p>La cotización conserva totales, descuento, envío y trazabilidad.</p><div class="feature-grid"><div class="feature-card"><b>Borrador</b><p>Preparar y revisar antes de enviar.</p></div><div class="feature-card"><b>Aprobada</b><p>Lista para convertir a pedido.</p></div><div class="feature-card"><b>Pedido</b><p>Conversión conserva los productos y valores.</p></div></div></section>
+  </div>
+  <section class="workspace" style="margin-top:16px"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Número</th><th>Estado</th><th>Subtotal</th><th>Envío</th><th>Total</th><th>Vigencia</th><th>Acciones</th></tr></thead><tbody id="quotesBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-orders">
+  <div class="page-head"><div><div class="eyebrow">Operación</div><h1>Pedidos</h1><p>Pago, despacho, guía y trazabilidad del pedido.</p></div><button class="btn" onclick="loadOrders()">↻ Actualizar</button></div>
+  <section class="workspace"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Despacho</th><th>Guía</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="ordersBody"><tr><td colspan="8">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-tasks">
+  <div class="page-head"><div><div class="eyebrow">Seguimiento</div><h1>Tareas</h1><p>Recordatorios manuales y base para automatizaciones comerciales.</p></div><button class="btn" onclick="loadTasks()">↻ Actualizar</button></div>
+  <div class="module-grid">
+    <section class="module-card"><h3>Nueva tarea</h3><form class="form-grid" onsubmit="createTask(event)"><div class="field full"><label>Título</label><input id="taskTitle" required></div><div class="field"><label>Vencimiento</label><input id="taskDue" type="datetime-local"></div><div class="field"><label>Prioridad</label><select id="taskPriority"><option value="low">Baja</option><option value="normal" selected>Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div><div class="field full"><label>Descripción</label><textarea id="taskDescription"></textarea></div><button class="btn primary full" type="submit">＋ Crear tarea</button></form></section>
+    <section class="module-card"><h3>Automatización preparada</h3><p>Las tareas pueden asociarse posteriormente a CAP, vendedor, contacto y reglas de falta de respuesta.</p></section>
+  </div>
+  <section class="workspace" style="margin-top:16px"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Tarea</th><th>Prioridad</th><th>Vencimiento</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tasksBody"><tr><td colspan="5">Cargando...</td></tr></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-ai"><div class="page-head"><div><div class="eyebrow">IA comercial</div><h1>Agente IA</h1><p>Centro del agente comercial por empresa.</p></div></div><div class="feature-grid"><div class="feature-card"><b>Conocimiento</b><p>Productos, precios, inventario, clientes, CAP, pedidos, cotizaciones y documentación interna.</p></div><div class="feature-card"><b>Proveedores</b><p>Arquitectura preparada para OpenAI, Anthropic y Gemini sin exponer llaves al navegador.</p></div><div class="feature-card"><b>Bandeja</b><p>La respuesta IA se añadirá sobre la Bandeja existente con trazabilidad de quién respondió.</p></div></div></section>
+<section class="content hidden" id="page-automations"><div class="page-head"><div><div class="eyebrow">Operación automática</div><h1>Automatizaciones</h1><p>Reglas por estado, CAP, falta de respuesta y alertas.</p></div></div><div class="feature-grid"><div class="feature-card"><b>Seguimientos</b><p>Programar tareas según próxima acción y fecha CAP.</p></div><div class="feature-card"><b>Escalamiento</b><p>Pasar a llamada o seguimiento cuando el cliente no responde.</p></div><div class="feature-card"><b>Alertas</b><p>Bloqueos, vencimientos y conversaciones sin responsable.</p></div></div></section>
+<section class="content hidden" id="page-analytics"><div class="page-head"><div><div class="eyebrow">Analítica</div><h1>Analítica</h1><p>Reportes por empresa y vendedor.</p></div><button class="btn" onclick="loadDashboard()">↻ Actualizar</button></div><div class="feature-grid"><div class="feature-card"><b>Leads y conversiones</b><p>Origen, etapa, CAP y oportunidades.</p></div><div class="feature-card"><b>Ventas</b><p>Valor ganado, cotizaciones y pedidos.</p></div><div class="feature-card"><b>Operación</b><p>Tiempos de respuesta, tareas y rendimiento por vendedor.</p></div></div></section>
+<section class="content hidden" id="page-settings"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Configuración</h1><p>Canales, permisos y parámetros de la empresa activa.</p></div></div><div class="feature-grid"><div class="feature-card"><b>Canales de mensajería</b><p>Facebook Messenger e Instagram conservan la infraestructura existente. WhatsApp seguirá el onboarding multiempresa aprobado por Meta.</p><button class="btn" style="margin-top:10px" onclick="showPage('channels',null)">Ver canales</button></div><div class="feature-card"><b>Permisos</b><p>Roles y permisos por módulo se administran desde Usuarios y empresas.</p></div><div class="feature-card"><b>Auditoría</b><p>Creación de usuarios, cambios sensibles, pedidos y eliminaciones quedan registrados.</p></div></div></section>
+
+<section class="content hidden" id="page-pipeline">
+  <div class="page-head"><div><div class="eyebrow">Comercial</div><h1>Pipeline de oportunidades</h1><p>Prospectos, seguimiento y cierres.</p></div><div class="actions"><button class="btn" onclick="exportCSV()">⇩ Exportar</button><button class="btn primary" onclick="openLead()">＋ Nuevo lead</button></div></div>
+  <section class="stats"><div class="stat"><div class="label">Leads activos</div><div class="value" id="kTotal">0</div><div class="hint">Pipeline abierto</div></div><div class="stat"><div class="label">Nuevos</div><div class="value" id="kNew">0</div><div class="hint">Sin contactar</div></div><div class="stat"><div class="label">Calificados</div><div class="value" id="kQualified">0</div><div class="hint">Cumplen mínimos</div></div><div class="stat"><div class="label">Reuniones</div><div class="value" id="kMeetings">0</div><div class="hint">Agendadas</div></div><div class="stat"><div class="label">Ganados</div><div class="value" id="kWon">0</div><div class="hint">Cierres</div></div></section>
+  <section class="workspace"><div class="toolbar"><input id="q" placeholder="Buscar en el pipeline..." oninput="syncSearch(this.value)"><select id="fService" onchange="render()"><option value="">Todos los servicios</option><option>Pauta</option><option>Integraciones</option><option>IA</option><option>Otro</option></select><select id="fSource" onchange="render()"><option value="">Todos los orígenes</option><option>Meta</option><option>WhatsApp</option><option>Referido</option><option>Web</option><option>Otro</option></select><select id="fStatus" onchange="render()"></select><div class="view-toggle"><button id="vBoard" class="active" onclick="setView('board')">▥ Kanban</button><button id="vTable" onclick="setView('table')">☷ Lista</button></div></div><div class="board-shell" id="boardShell"><section class="board" id="board"></section></div><div class="table-wrap hidden" id="tableWrap"><table class="crm-table"><thead><tr><th>Lead</th><th>Negocio</th><th>Servicio</th><th>Origen</th><th>Estado</th><th>Presupuesto</th><th>Acciones</th></tr></thead><tbody id="tableBody"></tbody></table></div></section>
+</section>
+
+<section class="content hidden" id="page-contacts"><div class="page-head"><div><div class="eyebrow">Base comercial</div><h1>Clientes / Contactos</h1><p>Contactos reales de la empresa activa, incluidos los que llegan desde la Bandeja.</p></div><button class="btn" onclick="loadCentralContacts()">↻ Actualizar</button></div><section class="workspace"><div class="table-wrap"><table class="crm-table"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Canal</th><th>Negocio</th><th>Ciudad</th><th>Actualizado</th></tr></thead><tbody id="centralContactsBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div></section></section></section>
+
+<section class="content hidden" id="page-inbox">
+  <div class="page-head"><div><div class="eyebrow">Conversaciones</div><h1>Bandeja de entrada</h1><p>Mensajes reales y ficha comercial del contacto en una sola vista.</p></div><button class="btn" onclick="loadInbox(false)">↻ Actualizar</button></div>
+  <div class="inbox-shell">
+    <div class="inbox-list-pane"><div class="inbox-list-head"><div class="inbox-title">Conversaciones</div><span class="inbox-live">Recepción activa</span></div><div class="conversation-list" id="conversationList"><div class="inbox-loading">Cargando conversaciones...</div></div></div>
+    <div class="chat-pane mobile-hidden" id="chatPane"><div class="chat-empty" id="chatEmpty"><div><strong>Selecciona una conversación</strong><br>Los mensajes nuevos aparecerán aquí automáticamente.</div></div><div class="hidden" id="chatContent" style="height:100%;display:flex;flex-direction:column"><div class="chat-head"><div class="chat-contact"><button class="icon-btn" id="chatBack" style="display:none" onclick="closeMobileChat()">←</button><div class="conv-avatar" id="chatAvatar">F</div><div><div class="chat-contact-name" id="chatName">Contacto</div><div class="chat-contact-meta" id="chatMeta">Facebook Messenger</div></div></div><button class="btn" onclick="loadConversation(activeConversationId,false)">↻</button></div><div class="messages" id="messages"></div><div class="chat-compose" id="chatCompose"><div class="chat-compose-row"><textarea id="inboxReplyText" placeholder="Escribe una respuesta..." maxlength="2000" onkeydown="handleInboxReplyKey(event)"></textarea><button class="btn primary" id="inboxReplyBtn" type="button" onclick="sendInboxReply()">Enviar</button></div><div class="chat-compose-note" id="inboxReplyNote"><span>Enter para enviar · Shift+Enter para salto de línea</span><span id="inboxReplyChannel"></span></div></div><div class="chat-foot"><span>Recepción automática activa</span><span id="chatSync">Actualizado</span></div></div></div>
+    <aside class="contact-pane" id="contactPane"><div class="contact-head"><div class="contact-avatar" id="detailAvatar">F</div><div class="contact-head-name" id="detailName">Sin contacto</div><div class="contact-head-meta" id="detailMeta">Selecciona una conversación</div></div><div class="contact-body" id="contactBody"><div class="inbox-loading">La ficha del lead aparecerá aquí.</div></div></aside>
+  </div>
+</section>
+
+<section class="content hidden" id="page-channels"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Canales</h1><p>Conexiones de mensajería del CRM.</p></div></div><div class="channel-list"><div class="channel-card"><div class="channel-icon fb">f</div><div class="channel-body"><div class="channel-name">Facebook Messenger</div><div class="channel-desc">Página Segmenta-Marketing Digital conectada al webhook y a la Bandeja.</div></div><span class="state ok">Conectado</span></div><div class="channel-card"><div class="channel-icon ig">◎</div><div class="channel-body"><div class="channel-name">Instagram</div><div class="channel-desc">Pendiente de conexión de mensajería.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon wa">◔</div><div class="channel-body"><div class="channel-name">WhatsApp</div><div class="channel-desc">Pendiente de conexión.</div></div><span class="state off">No conectado</span></div><div class="channel-card"><div class="channel-icon">♪</div><div class="channel-body"><div class="channel-name">TikTok</div><div class="channel-desc">Fase posterior.</div></div><span class="state wait">Próximamente</span></div></div></section>
+<section class="content hidden" id="page-integrations">
+  <div class="integration-topline"><i></i> Conectores · BYO API Key</div>
+  <div class="page-head"><div><h1>Integraciones</h1><p>Conecta canales, correo, comercio e IA con credenciales propias de este workspace.</p></div><button class="btn" onclick="loadIntegrations()">↻ Actualizar</button></div>
+  <div class="integration-summary" id="integrationSummary"><span>Cargando estado…</span></div>
+  <div class="integration-tabs-wrap"><div class="integration-tabs" id="integrationCategoryTabs"></div></div>
+  <div class="integration-cards" id="integrationCards"><div class="integration-loading">Cargando conectores…</div></div>
+</section>
+
+<div class="modal-backdrop hidden" id="integrationConfigModal">
+  <div class="integration-config-card">
+    <div class="integration-config-head"><h2 id="integrationConfigTitle">Configurar integración</h2><button class="icon-btn" type="button" onclick="closeIntegrationConfig()">×</button></div>
+    <div class="integration-config-body" id="integrationConfigBody"></div>
+  </div>
+</div>
+<section class="content hidden" id="page-reports"><div class="page-head"><div><div class="eyebrow">Resultados</div><h1>Reportes</h1><p>Métricas comerciales y adquisición.</p></div></div><div class="placeholder"><h3>Reportes en construcción</h3><p>Se conectarán a la base persistente del CRM.</p></div></section>
+<section class="content hidden" id="page-admin">
+  <div class="page-head"><div><div class="eyebrow">Accesos</div><h1>Usuarios</h1><p>Administra únicamente los usuarios de esta empresa y define qué módulos puede usar cada uno.</p></div><button class="btn" onclick="loadAdmin()">↻ Actualizar</button></div>
+  <div class="admin-grid" style="grid-template-columns:1fr">
+    <section class="admin-card">
+      <h3>Nuevo usuario</h3><p>El dueño controla el acceso operativo. Las integraciones permanecen reservadas para el Dueño y el Host de Segmenta.</p>
+      <form class="admin-form two" onsubmit="createCrmUser(event)">
+        <div class="field"><label>Nombre</label><input id="newUserName" required></div>
+        <div class="field"><label>Rol base</label><select id="newUserRole" onchange="syncPermissionChecksFromRole()"><option value="admin">Administrador</option><option value="sales" selected>Ventas</option><option value="inventory">Inventario / Bodega</option><option value="editor">Editor</option><option value="viewer">Solo lectura</option><option value="client">Cliente / Portal</option></select></div>
+        <div class="field"><label>Correo</label><input id="newUserEmail" type="email" required></div>
+        <div class="field"><label>Contraseña inicial</label><input id="newUserPassword" type="password" minlength="8" required></div>
+        <div class="field full"><label>Módulos habilitados</label><div id="permissionChecks" class="permission-grid">
+          <label><input type="checkbox" data-permission-module="dashboard"> Dashboard</label>
+          <label><input type="checkbox" data-permission-module="inbox"> Bandeja</label>
+          <label><input type="checkbox" data-permission-module="crm"> CRM</label>
+          <label><input type="checkbox" data-permission-module="cap"> Pipeline / CAP</label>
+          <label><input type="checkbox" data-permission-module="quotes"> Cotizaciones</label>
+          <label><input type="checkbox" data-permission-module="orders"> Pedidos</label>
+          <label><input type="checkbox" data-permission-module="contacts"> Contactos</label>
+          <label><input type="checkbox" data-permission-module="tasks"> Tareas</label>
+          <label><input type="checkbox" data-permission-module="ai"> Agente IA</label>
+          <label><input type="checkbox" data-permission-module="automations"> Automatizaciones</label>
+          <label><input type="checkbox" data-permission-module="analytics"> Analítica</label>
+          <label><input type="checkbox" data-permission-module="settings"> Configuración</label>
+        </div></div>
+        <button class="btn primary full" type="submit">＋ Crear usuario</button>
+      </form>
+      <div class="table-wrap"><table class="mini-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Módulos</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="userAdminBody"><tr><td colspan="5">Cargando...</td></tr></tbody></table></div>
+    </section>
+  </div>
+</section>
+</main></div>
+
+<div class="drawer-backdrop" id="drawerBg" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer"><div class="drawer-head"><div><div class="drawer-title" id="drawerTitle">Nuevo lead</div><div class="drawer-sub" id="drawerSub">Completa la información comercial</div></div><button class="icon-btn" onclick="closeDrawer()">×</button></div><div class="drawer-body"><div class="grid"><div class="field"><label>Nombre</label><input id="name"></div><div class="field"><label>Negocio</label><input id="business"></div><div class="field"><label>Teléfono</label><input id="phone"></div><div class="field"><label>Correo</label><input id="email" type="email"></div><div class="field"><label>Servicio</label><select id="service"><option>Pauta</option><option>Integraciones</option><option>IA</option><option>Otro</option></select></div><div class="field"><label>Objetivo</label><select id="goal"><option>Ventas</option><option>Leads</option><option>Otro</option></select></div><div class="field"><label>Presupuesto</label><input id="budget"></div><div class="field"><label>Origen</label><select id="source"><option>Meta</option><option>WhatsApp</option><option>Referido</option><option>Web</option><option>Otro</option></select></div><div class="field"><label>Estado</label><select id="status"></select></div><div class="field"><label>Próxima acción</label><input id="nextAction" type="date"></div><div class="field full"><label>Campaña</label><input id="campaign"></div><div class="field"><label>Conjunto</label><input id="adset"></div><div class="field"><label>Anuncio</label><input id="ad"></div><div class="field full"><label>Notas</label><textarea id="notes"></textarea></div></div></div><div class="drawer-foot"><button class="btn danger" id="deleteBtn" onclick="deleteLead()">🗑 Eliminar lead</button><div class="actions"><button class="btn" onclick="closeDrawer()">Cancelar</button><button class="btn primary" onclick="saveLead()">Guardar</button></div></div></aside>
+
+<div class="modal-backdrop hidden" id="userPermissionsModal"><form class="login-card" onsubmit="saveUserPermissions(event)"><h2>Permisos del usuario</h2><p id="editUserLabel">Define los módulos visibles dentro de este CRM.</p><input type="hidden" id="editMembershipId"><div class="field"><label>Rol base</label><select id="editUserRole" onchange="syncEditPermissionChecksFromRole()"><option value="admin">Administrador</option><option value="sales">Ventas</option><option value="inventory">Inventario / Bodega</option><option value="editor">Editor</option><option value="viewer">Solo lectura</option></select></div><div class="field"><label>Módulos habilitados</label><div class="permission-grid" id="editPermissionChecks">
+<label><input type="checkbox" data-edit-permission-module="dashboard"> Dashboard</label>
+<label><input type="checkbox" data-edit-permission-module="inbox"> Bandeja</label>
+<label><input type="checkbox" data-edit-permission-module="crm"> CRM</label>
+<label><input type="checkbox" data-edit-permission-module="cap"> Pipeline / CAP</label>
+<label><input type="checkbox" data-edit-permission-module="quotes"> Cotizaciones</label>
+<label><input type="checkbox" data-edit-permission-module="orders"> Pedidos</label>
+<label><input type="checkbox" data-edit-permission-module="contacts"> Contactos</label>
+<label><input type="checkbox" data-edit-permission-module="tasks"> Tareas</label>
+<label><input type="checkbox" data-edit-permission-module="ai"> Agente IA</label>
+<label><input type="checkbox" data-edit-permission-module="automations"> Automatizaciones</label>
+<label><input type="checkbox" data-edit-permission-module="analytics"> Analítica</label>
+<label><input type="checkbox" data-edit-permission-module="settings"> Configuración</label>
+</div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" type="button" onclick="closeUserPermissions()">Cancelar</button><button class="btn primary" type="submit">Guardar permisos</button></div></form></div>
+<div class="modal-backdrop hidden" id="crmLoginModal"><form class="login-card" onsubmit="loginInbox(event)"><div class="portal-login-brand"><div class="portal-login-mark">S</div><div><b>Segmenta</b><span id="crmLoginBrandSub">Portal de clientes</span></div></div><h2 id="crmLoginTitle">Acceso al portal</h2><p id="crmLoginSubtitle">Inicia sesión con el usuario asignado a tu empresa. Solo verás los módulos habilitados para tu cuenta.</p><div class="field"><label>Correo</label><input id="crmLoginEmail" type="email" autocomplete="username" required placeholder="correo@empresa.com"></div><div class="field"><label>Contraseña</label><input id="crmLoginPassword" type="password" autocomplete="current-password" required></div><div class="login-error hidden" id="crmLoginError">Credenciales inválidas o usuario sin empresa asignada.</div><button class="btn primary login-submit" id="crmLoginSubmit" type="submit">Ingresar</button></form></div>
+<div class="toast" id="toast"></div>
+<script>
+const STAGES=[['nuevo','Nuevo lead'],['contactado','Contactado'],['calificado','Calificado'],['reunion','Reunión agendada'],['propuesta','Propuesta enviada'],['ganado','Ganado'],['perdido','Perdido']];
+let currentOrgSlug='segmenta',KEY='segmenta_crm_v1_segmenta',leads=[],crmSession=null,adminOrganizations=[],adminMemberships=[];
+function loadLocalLeads(){KEY='segmenta_crm_v1_'+currentOrgSlug;try{leads=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(_){leads=[]}}
+loadLocalLeads();
+let editing=null,currentView='board',currentPage='dashboard';let inboxConversations=[],activeConversationId=null,activeConversationData=null,inboxPoll=null,inboxAuthenticated=false,contactFormDirty=false;
+try{
+  Object.defineProperty(window,'crmSession',{configurable:true,get:()=>crmSession,set:v=>{crmSession=v}});
+  Object.defineProperty(window,'currentPage',{configurable:true,get:()=>currentPage,set:v=>{currentPage=v}});
+  Object.defineProperty(window,'currentOrgSlug',{configurable:true,get:()=>currentOrgSlug,set:v=>{currentOrgSlug=v}});
+  Object.defineProperty(window,'activeConversationId',{configurable:true,get:()=>activeConversationId,set:v=>{activeConversationId=v}});
+}catch(_){}
+
+const leadFields=['name','business','phone','email','service','goal','budget','source','status','nextAction','campaign','adset','ad','notes'];
+function gid(){return 'l_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
+function esc(s){return String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]))}
+function persist(){localStorage.setItem(KEY,JSON.stringify(leads))}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),2200)}
+function fillStatus(){const opts=STAGES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');document.getElementById('status').innerHTML=opts;document.getElementById('fStatus').innerHTML='<option value="">Todos los estados</option>'+opts}
+function syncSearch(v){if(document.getElementById('q'))document.getElementById('q').value=v;document.getElementById('topQ').value=v;render()}
+function visible(){const q=(document.getElementById('q').value||'').toLowerCase(),sv=document.getElementById('fService').value,so=document.getElementById('fSource').value,st=document.getElementById('fStatus').value;return leads.filter(x=>(!sv||x.service===sv)&&(!so||x.source===so)&&(!st||x.status===st)&&(!q||[x.name,x.business,x.phone,x.email,x.campaign,x.ad,x.notes].join(' ').toLowerCase().includes(q)))}
+function statusLabel(v){return (STAGES.find(x=>x[0]===v)||[])[1]||v||'Nuevo lead'}
+function card(x){const src=x.source==='Meta'?'<span class="tag meta">Meta</span>':`<span class="tag">${esc(x.source||'Otro')}</span>`;return `<article class="lead" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${x.id}')" onclick="openLead('${x.id}')"><div class="lead-top"><div><h3>${esc(x.name||'Sin nombre')}</h3><div class="company">${esc(x.business||'Sin negocio')}</div></div><div class="lead-actions"><button class="tiny-btn" onclick="event.stopPropagation();openLead('${x.id}')" title="Editar">✎</button><button class="tiny-btn danger" onclick="event.stopPropagation();deleteLeadById('${x.id}')" title="Eliminar">🗑</button></div></div><div class="tags"><span class="tag">${esc(x.service||'')}</span>${src}${x.budget?'<span class="tag green">'+esc(x.budget)+'</span>':''}</div><div class="lead-info"><div><div class="info-k">Objetivo</div><div class="info-v">${esc(x.goal||'—')}</div></div><div><div class="info-k">Campaña</div><div class="info-v">${esc(x.campaign||'—')}</div></div></div><div class="leadfoot">${x.nextAction?'Próx. '+esc(x.nextAction):'Sin próxima acción'}</div></article>`}
+function row(x){return `<tr><td><b>${esc(x.name||'Sin nombre')}</b></td><td>${esc(x.business||'—')}</td><td>${esc(x.service||'—')}</td><td>${esc(x.source||'—')}</td><td><span class="status-pill">${esc(statusLabel(x.status))}</span></td><td>${esc(x.budget||'—')}</td><td><div class="actions"><button class="tiny-btn" onclick="openLead('${x.id}')">✎</button><button class="tiny-btn danger" onclick="deleteLeadById('${x.id}')">🗑</button></div></td></tr>`}
+function render(){const data=visible();document.getElementById('board').innerHTML=STAGES.map(([key,label])=>{const arr=data.filter(x=>x.status===key);return `<div class="col" ondragover="event.preventDefault()" ondrop="dropLead(event,'${key}')"><div class="colh"><div class="col-title">${label}</div><span class="count">${arr.length}</span></div><div class="cards">${arr.length?arr.map(card).join(''):'<div class="empty">Sin leads</div>'}</div></div>`}).join('');document.getElementById('tableBody').innerHTML=data.length?data.map(row).join(''):'<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Sin leads</td></tr>';document.getElementById('kTotal').textContent=leads.filter(x=>!['ganado','perdido'].includes(x.status)).length;document.getElementById('kNew').textContent=leads.filter(x=>x.status==='nuevo').length;document.getElementById('kQualified').textContent=leads.filter(x=>x.status==='calificado').length;document.getElementById('kMeetings').textContent=leads.filter(x=>x.status==='reunion').length;document.getElementById('kWon').textContent=leads.filter(x=>x.status==='ganado').length;if(document.getElementById('sideCount'))document.getElementById('sideCount').textContent=leads.filter(x=>!['ganado','perdido'].includes(x.status)).length;if(document.getElementById('contactsBody'))renderContacts(document.getElementById('contactQ')?.value||'')}
+function renderContacts(q=''){const target=document.getElementById('contactsBody');if(!target)return;q=q.toLowerCase();const arr=leads.filter(x=>!q||[x.name,x.business,x.phone,x.email].join(' ').toLowerCase().includes(q));target.innerHTML=arr.length?arr.map(x=>`<tr><td><b>${esc(x.name||'Sin nombre')}</b></td><td>${esc(x.business||'—')}</td><td>${esc(x.phone||'—')}</td><td>${esc(x.email||'—')}</td><td>${esc(x.service||'—')}</td><td>${esc(x.source||'—')}</td><td><div class="actions"><button class="tiny-btn" onclick="openLead('${x.id}')">✎</button><button class="tiny-btn danger" onclick="deleteLeadById('${x.id}')">🗑</button></div></td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Sin contactos</td></tr>'}
+function setView(v){currentView=v;document.getElementById('boardShell').classList.toggle('hidden',v!=='board');document.getElementById('tableWrap').classList.toggle('hidden',v!=='table');document.getElementById('vBoard').classList.toggle('active',v==='board');document.getElementById('vTable').classList.toggle('active',v==='table')}
+function dropLead(e,s){const id=e.dataTransfer.getData('text/plain'),x=leads.find(a=>a.id===id);if(x){x.status=s;x.updatedAt=new Date().toISOString();persist();render();toast('Lead movido')}}
+function openLead(id){editing=id||null;const x=id?leads.find(a=>a.id===id):{status:'nuevo',service:'Pauta',goal:'Ventas',source:'Meta'};leadFields.forEach(k=>document.getElementById(k).value=x?.[k]||'');document.getElementById('drawerTitle').textContent=id?(x?.name||'Editar lead'):'Nuevo lead';document.getElementById('drawerSub').textContent=id?((x?.business||'Sin negocio')+' · '+(x?.phone||'Sin teléfono')):'Completa la información comercial';document.getElementById('deleteBtn').classList.toggle('hidden',!id);document.getElementById('drawer').classList.add('open');document.getElementById('drawerBg').classList.add('open')}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawerBg').classList.remove('open')}
+function saveLead(){const data={};leadFields.forEach(k=>data[k]=document.getElementById(k).value.trim());if(!data.name&&!data.business){toast('Agrega nombre o negocio');return}const now=new Date().toISOString();if(editing){const x=leads.find(a=>a.id===editing);if(x)Object.assign(x,data,{updatedAt:now})}else leads.unshift({...data,id:gid(),createdAt:now,updatedAt:now});persist();closeDrawer();render();toast(editing?'Lead actualizado':'Lead creado')}
+function deleteLead(){if(editing)deleteLeadById(editing,true)}
+function deleteLeadById(id,close=false){const x=leads.find(a=>a.id===id);if(!x)return;if(!confirm(`¿Eliminar definitivamente a ${x.name||x.business||'este lead'}?`))return;leads=leads.filter(a=>a.id!==id);persist();if(close)closeDrawer();render();toast('Lead eliminado')}
+function exportCSV(){const cols=leadFields;const csv=[cols.join(','),...leads.map(x=>cols.map(k=>'"'+String(x[k]||'').replace(/"/g,'""')+'"').join(','))].join('\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='segmenta-leads.csv';a.click();URL.revokeObjectURL(u)}
+function showPage(page,btn){const pageToModule={dashboard:'dashboard',inbox:'inbox',crm:'crm',cap:'cap',quotes:'quotes',orders:'orders',contacts:'contacts',tasks:'tasks',ai:'ai',automations:'automations',analytics:'analytics',integrations:'integrations',admin:'users',settings:'settings',channels:'settings'};const mod=pageToModule[page];if(crmSession&&mod&&!moduleAllowed(mod)){toast('No tienes acceso a este módulo');return}currentPage=page;document.querySelectorAll('.content').forEach(x=>x.classList.add('hidden'));document.querySelectorAll('.nav-item[data-page]').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');else{const nb=document.querySelector('.nav-item[data-page="'+page+'"]');if(nb)nb.classList.add('active')}const el=document.getElementById('page-'+page);if(el)el.classList.remove('hidden');document.getElementById('globalSearch').classList.toggle('hidden',!['pipeline'].includes(page));const labels={dashboard:'Ejecución',inbox:'Bandeja',crm:'CRM',cap:'Pipeline / CAP',quotes:'Cotizaciones',orders:'Pedidos',contacts:'Clientes / Contactos',tasks:'Tareas',ai:'Agente IA',automations:'Automatizaciones',analytics:'Analítica',integrations:'Integraciones',admin:'Usuarios y empresas',settings:'Configuración',channels:'Canales'};document.getElementById('crumbTitle').textContent=labels[page]||page;document.getElementById('sidebar').classList.remove('open');loadCurrentModule()}
+function refreshCurrentPage(){loadCurrentModule(true)}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+function contactLabel(c){const ct=c.contact||{},name=ct.display_name?.trim();if(name)return name;const meta=ct.metadata?.meta_profile||{};const metaName=String(meta.name||'').trim();if(metaName)return metaName;const username=String(meta.username||'').trim();if(username)return '@'+username;const id=ct.external_user_id||'';return `Contacto${id?' · '+id.slice(-6):''}`}
+function initials(name){const p=String(name||'F').split(/\s+/).filter(Boolean);return ((p[0]?.[0]||'F')+(p[1]?.[0]||'')).toUpperCase()}
+function timeLabel(value){if(!value)return '';const d=new Date(value),n=new Date();if(d.toDateString()===n.toDateString())return d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});return d.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})}
+function profilePic(contact){const u=contact?.metadata?.meta_profile?.profile_pic||'';return /^https:\/\//i.test(u)?u:''}
+function avatarMarkup(contact,name){const pic=profilePic(contact);return pic?`<img src="${esc(pic)}" alt="">`:esc(initials(name))}
+function renderLoginContext(){
+  const portal=new URLSearchParams(location.search).get('portal')==='1';
+  const title=document.getElementById('crmLoginTitle'),sub=document.getElementById('crmLoginSubtitle'),brand=document.getElementById('crmLoginBrandSub'),btn=document.getElementById('crmLoginSubmit');
+  if(title)title.textContent=portal?'Acceso al portal':'Acceso al CRM';
+  if(sub)sub.textContent=portal?'Inicia sesión con el usuario asignado a tu empresa. Solo verás los módulos habilitados para tu cuenta.':'Inicia sesión con el usuario asignado a tu workspace.';
+  if(brand)brand.textContent=portal?'Portal de clientes':'CRM';
+  if(btn)btn.textContent=portal?'Ingresar al portal':'Entrar al CRM';
+}
+function showCrmLogin(){
+  renderLoginContext();
+  document.body.classList.add('crm-auth-gate');
+  document.getElementById('crmLoginModal').classList.remove('hidden');
+}
+function hideCrmLogin(){
+  document.body.classList.remove('crm-auth-gate');
+  document.getElementById('crmLoginModal').classList.add('hidden');
+}
+async function ensureInboxAuth(){return ensureCrmAuth(true)}
+async function ensureCrmAuth(loadInboxAfter=false){
+  try{
+    let r=await fetch('/api/crm-auth',{cache:'no-store'}),j=await r.json();
+    inboxAuthenticated=!!j.authenticated;
+    if(!inboxAuthenticated){crmSession=null;showCrmLogin();return false}
+    const wanted=requestedWorkspace();
+    if(wanted&&j.organization?.slug!==wanted){
+      const sw=await fetch('/api/crm-auth',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({org_slug:wanted})});
+      if(!sw.ok){document.getElementById('crmLoginError').textContent='Este usuario no tiene acceso a este CRM.';document.getElementById('crmLoginError').classList.remove('hidden');showCrmLogin();return false}
+      r=await fetch('/api/crm-auth',{cache:'no-store'});j=await r.json();
+    }
+    crmSession=j;
+    const previewMode=new URLSearchParams(location.search).get('client_preview')==='1';
+    if((j.role==='client'&&!j.platform_admin)||previewMode){
+      const qs=new URLSearchParams();
+      if(j.organization?.slug)qs.set('workspace',j.organization.slug);
+      if(previewMode)qs.set('client_preview','1');
+      location.replace('/portal'+(qs.toString()?'?'+qs.toString():''));
+      return false;
+    }
+    hideCrmLogin();
+    currentOrgSlug=j.organization?.slug||currentOrgSlug||'segmenta';
+    loadLocalLeads();
+    render();
+    renderCrmSession();
+    startInboxPolling();
+    if(loadInboxAfter||currentPage==='inbox')await loadInbox(false);else await loadCurrentModule();
+    return true
+  }catch(_){showCrmLogin();return false}
+}
+function requestedWorkspace(){return new URLSearchParams(location.search).get('workspace')||''}
+function renderCrmSession(){
+  const email=crmSession?.email||'CRM';
+  document.getElementById('orgContextName').textContent=crmSession?.organization?.name||'CRM';
+  document.getElementById('hostBackLink').classList.add('hidden');
+  document.getElementById('profileName').textContent=crmSession?.organization?.name||'CRM';
+  document.getElementById('profileRole').textContent=(crmSession?.platform_admin?'Host · ':'')+roleLabel(crmSession?.role);
+  document.getElementById('profileAvatar').textContent=(crmSession?.organization?.name||email||'S').charAt(0).toUpperCase();
+  applyNavigationPermissions();
+}
+async function loginInbox(e){
+  e.preventDefault();const err=document.getElementById('crmLoginError');err.classList.add('hidden');
+  try{
+    const r=await fetch('/api/crm-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('crmLoginEmail').value.trim(),password:document.getElementById('crmLoginPassword').value,workspace:requestedWorkspace()||undefined})});
+    if(!r.ok){err.classList.remove('hidden');return}
+    document.getElementById('crmLoginPassword').value='';
+    await ensureCrmAuth(currentPage==='inbox');
+    if(currentPage==='admin')await loadAdmin();
+  }catch(_){err.classList.remove('hidden')}
+}
+async function logoutCrm(){
+  try{await fetch('/api/crm-auth',{method:'DELETE'})}catch(_){}
+  inboxAuthenticated=false;crmSession=null;clearInterval(inboxPoll);inboxPoll=null;
+  showCrmLogin();
+}
+function startInboxPolling(){if(inboxPoll)return;inboxPoll=setInterval(async()=>{if(currentPage!=='inbox'||!inboxAuthenticated)return;await loadInbox(true);if(activeConversationId)await loadConversation(activeConversationId,true)},4000)}
+function updateInboxBadge(n){const b=document.getElementById('inboxNavCount');b.textContent=n||0;b.classList.toggle('hidden',!n)}
+function showInboxError(msg){document.getElementById('conversationList').innerHTML=`<div class="inbox-error">${esc(msg)}</div>`}
+async function loadInbox(silent=false){if(!inboxAuthenticated){if(!silent)ensureInboxAuth();return}try{const r=await fetch('/api/crm-inbox?org='+encodeURIComponent(currentOrgSlug),{cache:'no-store'});if(r.status===401){inboxAuthenticated=false;showCrmLogin();return}if(!r.ok)throw new Error();const j=await r.json();inboxConversations=j.conversations||[];updateInboxBadge(j.unread_total||0);renderConversationList();if(!activeConversationId&&inboxConversations.length)await openConversation(inboxConversations[0].id)}catch(_){if(!silent)showInboxError('No fue posible cargar las conversaciones.')}}
+function renderConversationList(){const el=document.getElementById('conversationList');if(!inboxConversations.length){el.innerHTML='<div class="inbox-loading">Todavía no hay conversaciones.</div>';return}el.innerHTML=inboxConversations.map(c=>{const n=contactLabel(c),m=c.latest_message,t=m?.text||((m?.attachments||[]).length?'[Archivo adjunto]':'Sin mensajes'),u=Number(c.unread_count||0);return `<button class="conversation-item${c.id===activeConversationId?' active':''}" onclick="openConversation('${c.id}')"><div class="conv-avatar">${avatarMarkup(c.contact,n)}</div><div class="conv-main"><div class="conv-name">${esc(n)}</div><div class="conv-meta">${esc(c.channel_label||'Canal')}</div><div class="conv-preview">${esc(t)}</div></div><div class="conv-side"><div class="conv-time">${esc(timeLabel(m?.sent_at||c.last_message_at))}</div>${u?`<span class="unread">${u}</span>`:''}</div></button>`}).join('')}
+async function openConversation(id){activeConversationId=id;contactFormDirty=false;renderConversationList();await loadConversation(id,false);try{await fetch('/api/crm-inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conversation_id:id})});const c=inboxConversations.find(x=>x.id===id);if(c)c.unread_count=0;updateInboxBadge(inboxConversations.reduce((s,x)=>s+Number(x.unread_count||0),0));renderConversationList()}catch(_){}}
+async function loadConversation(id,silent=false){if(!id||!inboxAuthenticated)return;try{const r=await fetch('/api/crm-inbox?org='+encodeURIComponent(currentOrgSlug)+'&conversation_id='+encodeURIComponent(id),{cache:'no-store'});if(r.status===401){inboxAuthenticated=false;showCrmLogin();return}if(!r.ok)throw new Error();const j=await r.json(),c=j.conversation||{},n=contactLabel({...c,channel_label:c.channel_label});activeConversationData=c;document.getElementById('chatEmpty').classList.add('hidden');document.getElementById('chatContent').classList.remove('hidden');document.getElementById('chatPane').classList.remove('mobile-hidden');document.getElementById('chatName').textContent=n;document.getElementById('chatMeta').textContent=(c.channel_label||'Canal')+' · '+(c.channel?.external_account_name||'Segmenta');document.getElementById('chatAvatar').innerHTML=avatarMarkup(c.contact,n);document.getElementById('chatBack').style.display=window.innerWidth<=850?'grid':'none';renderMessages(j.messages||[]);updateInboxReplyComposer(c);if(!silent||!contactFormDirty)renderContactDetails(c);document.getElementById('chatSync').textContent='Actualizado '+new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})}catch(_){if(!silent)toast('No fue posible cargar los mensajes')}}
+function renderMessages(messages){const el=document.getElementById('messages');if(!messages.length){el.innerHTML='<div class="inbox-loading">Sin mensajes.</div>';return}const near=el.scrollHeight-el.scrollTop-el.clientHeight<80;el.innerHTML=messages.map(m=>`<div class="message-row ${m.direction==='outbound'?'outbound':'inbound'}"><div class="bubble"><div class="msg-text">${esc(m.text||((m.attachments||[]).length?'[Archivo adjunto]':'[Mensaje sin texto]'))}</div><div class="msg-time">${esc(new Date(m.sent_at||m.created_at).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}))}</div></div></div>`).join('');if(near||!el.dataset.loaded)setTimeout(()=>{el.scrollTop=el.scrollHeight;el.dataset.loaded='1'},0)}
+function updateInboxReplyComposer(c){
+  const input=document.getElementById('inboxReplyText'),btn=document.getElementById('inboxReplyBtn'),note=document.getElementById('inboxReplyNote'),label=document.getElementById('inboxReplyChannel');
+  if(!input||!btn)return;
+  const type=c?.channel?.channel_type||'',supported=['instagram','facebook_messenger'].includes(type);
+  input.disabled=!supported;btn.disabled=!supported;
+  input.placeholder=supported?'Escribe una respuesta...':'Este canal todavía no admite respuestas desde el CRM';
+  if(label)label.textContent=type==='instagram'?'Instagram':type==='facebook_messenger'?'Messenger':'';
+  if(note)note.classList.remove('error');
+}
+function handleInboxReplyKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendInboxReply()}
+}
+async function sendInboxReply(){
+  if(!activeConversationId||!activeConversationData)return;
+  const input=document.getElementById('inboxReplyText'),btn=document.getElementById('inboxReplyBtn'),note=document.getElementById('inboxReplyNote');
+  const text=input?.value?.trim()||'';
+  if(!text){input?.focus();return}
+  const original=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent='Enviando…'}
+  if(note)note.classList.remove('error');
+  try{
+    const r=await fetch('/api/crm-inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send_message',conversation_id:activeConversationId,text})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||'No fue posible enviar el mensaje');
+    if(input)input.value='';
+    await loadConversation(activeConversationId,false);
+    await loadInbox(true);
+    input?.focus();
+  }catch(err){
+    if(note){note.classList.add('error');note.firstElementChild.textContent=err.message||'No fue posible enviar el mensaje'}
+    toast(err.message||'No fue posible enviar el mensaje');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=original||'Enviar'}
+    updateInboxReplyComposer(activeConversationData);
+  }
+}
+function renderContactDetails(c){const ct=c.contact||{},md=ct.metadata||{},n=contactLabel({...c,channel_label:c.channel_label}),pic=profilePic(ct);document.getElementById('detailAvatar').innerHTML=pic?`<img src="${esc(pic)}" alt="">`:esc(initials(n));document.getElementById('detailName').textContent=n;document.getElementById('detailMeta').textContent=c.channel_label||'Canal';document.getElementById('contactBody').innerHTML=`<div class="detail-section"><div class="detail-section-title">Datos del lead</div><div class="field"><label>Nombre</label><input id="dName" value="${esc(ct.display_name||'')}" oninput="contactFormDirty=true"></div><div class="field"><label>Teléfono</label><input id="dPhone" value="${esc(ct.phone||'')}" placeholder="No disponible" oninput="contactFormDirty=true"></div><div class="field"><label>Correo</label><input id="dEmail" value="${esc(ct.email||'')}" placeholder="No disponible" oninput="contactFormDirty=true"></div><div class="field"><label>Negocio</label><input id="dBusiness" value="${esc(md.business||'')}" placeholder="No disponible" oninput="contactFormDirty=true"></div><div class="field"><label>Ciudad</label><input id="dCity" value="${esc(md.city||'')}" placeholder="No disponible" oninput="contactFormDirty=true"></div><div class="field"><label>Origen</label><input id="dSource" value="${esc(md.source||c.channel_label||'')}" oninput="contactFormDirty=true"></div><div class="field"><label>Producto / interés</label><input id="dInterest" value="${esc(md.interest||'')}" placeholder="No disponible" oninput="contactFormDirty=true"></div><div class="field"><label>Estado</label><select id="dStatus" onchange="contactFormDirty=true"><option value="">Sin definir</option>${STAGES.map(([v,l])=>`<option value="${v}"${md.lead_status===v?' selected':''}>${l}</option>`).join('')}</select></div><div class="field"><label>Responsable</label><input id="dResponsible" value="${esc(md.responsible||'')}" placeholder="Sin asignar" oninput="contactFormDirty=true"></div><div class="field"><label>Notas</label><textarea id="dNotes" oninput="contactFormDirty=true">${esc(md.notes||'')}</textarea></div></div><div class="detail-section"><div class="detail-section-title">Origen técnico</div><div class="info-row"><span>Canal</span><span>${esc(c.channel_label||'—')}</span></div><div class="info-row"><span>Página</span><span>${esc(c.channel?.external_account_name||'—')}</span></div><div class="info-row"><span>ID de contacto</span><span>${esc(ct.external_user_id||'—')}</span></div><div class="info-row"><span>Creado</span><span>${ct.created_at?esc(new Date(ct.created_at).toLocaleString('es-CO')):'—'}</span></div></div><div class="contact-actions"><button class="btn primary full" onclick="saveInboxContact()">Guardar ficha</button><button class="btn full" onclick="syncContactToLead()">＋ Crear / actualizar lead</button><button class="btn danger full" onclick="deleteInboxContact()">🗑 Eliminar lead y conversación</button></div>`;contactFormDirty=false}
+async function saveInboxContact(){if(!activeConversationId||!activeConversationData)return;const body={conversation_id:activeConversationId,display_name:document.getElementById('dName').value,phone:document.getElementById('dPhone').value,email:document.getElementById('dEmail').value,metadata:{business:document.getElementById('dBusiness').value,city:document.getElementById('dCity').value,source:document.getElementById('dSource').value,interest:document.getElementById('dInterest').value,lead_status:document.getElementById('dStatus').value,responsible:document.getElementById('dResponsible').value,notes:document.getElementById('dNotes').value}};try{const r=await fetch('/api/crm-inbox',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error();contactFormDirty=false;toast('Ficha guardada');await loadInbox(true);await loadConversation(activeConversationId,false)}catch(_){toast('No fue posible guardar la ficha')}}
+function syncContactToLead(){if(!activeConversationData?.contact)return;const ct=activeConversationData.contact,md=ct.metadata||{};const vals={name:document.getElementById('dName')?.value||ct.display_name||'',business:document.getElementById('dBusiness')?.value||md.business||'',phone:document.getElementById('dPhone')?.value||ct.phone||'',email:document.getElementById('dEmail')?.value||ct.email||'',service:'Pauta',goal:'Leads',budget:'',source:document.getElementById('dSource')?.value||md.source||'Meta',status:document.getElementById('dStatus')?.value||md.lead_status||'nuevo',nextAction:'',campaign:'',adset:'',ad:'',notes:document.getElementById('dNotes')?.value||md.notes||'',inboxContactId:ct.id,externalUserId:ct.external_user_id};let x=leads.find(a=>a.inboxContactId===ct.id);const now=new Date().toISOString();if(x)Object.assign(x,vals,{updatedAt:now});else leads.unshift({...vals,id:gid(),createdAt:now,updatedAt:now});persist();render();toast(x?'Lead actualizado en pipeline':'Lead creado en pipeline')}
+async function deleteInboxContact(){if(!activeConversationId||!activeConversationData?.contact)return;const n=contactLabel({...activeConversationData,channel_label:activeConversationData.channel_label});if(!confirm(`¿Eliminar definitivamente a ${n}?\n\nSe borrarán el contacto, la conversación y sus mensajes del CRM.`))return;const contactId=activeConversationData.contact.id;try{const r=await fetch('/api/crm-inbox?org='+encodeURIComponent(currentOrgSlug)+'&conversation_id='+encodeURIComponent(activeConversationId)+'&delete_contact=1',{method:'DELETE'});if(!r.ok)throw new Error();leads=leads.filter(x=>x.inboxContactId!==contactId);persist();activeConversationId=null;activeConversationData=null;document.getElementById('chatContent').classList.add('hidden');document.getElementById('chatEmpty').classList.remove('hidden');document.getElementById('contactBody').innerHTML='<div class="inbox-loading">La ficha del lead aparecerá aquí.</div>';document.getElementById('detailName').textContent='Sin contacto';render();await loadInbox(false);toast('Lead y conversación eliminados')}catch(_){toast('No fue posible eliminar el contacto')}}
+let integrationState={integrations:[],channels:[],capabilities:{}};
+async function loadIntegrations(){
+  try{
+    const r=await fetch('/api/crm-integrations',{cache:'no-store'}),j=await r.json();
+    if(r.status===401){await ensureCrmAuth(false);return}
+    if(!r.ok)throw new Error(j.error||'Error');
+    integrationState=j;
+    const meta=(j.integrations||[]).find(x=>x.provider==='meta'&&x.integration_type==='business_portfolio'&&x.status!=='disconnected');
+    const state=document.getElementById('metaIntegrationState'),textEl=document.getElementById('metaIntegrationText'),connect=document.getElementById('metaConnectBtn'),disconnect=document.getElementById('metaDisconnectBtn');
+    if(meta&&meta.status==='connected'){
+      state.innerHTML='<span class="state ok">Conectado</span>';
+      textEl.innerHTML='<b>'+esc(meta.display_name||'Portafolio Meta')+'</b><br>ID: '+esc(meta.external_account_id||'—');
+      connect.classList.add('hidden');disconnect.classList.remove('hidden');disconnect.dataset.integrationId=meta.id;
+    }else if(meta&&meta.status==='pending'){
+      state.innerHTML='<span class="state wait">Conexión pendiente</span>';
+      textEl.textContent='La autorización de Meta está iniciada pero todavía no se completó.';
+      connect.classList.remove('hidden');connect.textContent='Continuar conexión';disconnect.classList.add('hidden');
+    }else{
+      state.innerHTML='<span class="state off">No conectado</span>';
+      connect.classList.remove('hidden');connect.textContent='Conectar portafolio Meta';disconnect.classList.add('hidden');
+      const ready=j.capabilities?.meta_business_login?.ready;
+      textEl.textContent=ready?'Conecta el portafolio empresarial de esta empresa para administrar sus activos autorizados.':'La estructura por empresa ya está lista. Falta terminar la configuración de Facebook Login for Business en la app de Meta.';
+    }
+    const ch=j.channels||[];
+    document.getElementById('integrationChannelsSummary').textContent=ch.length?ch.map(x=>(x.external_account_name||x.external_account_id||x.channel_type)+' · '+x.channel_type).join(' | '):'Todavía no hay canales conectados para esta empresa.';
+  }catch(err){toast(err.message||'No fue posible cargar integraciones')}
+}
+async function beginMetaBusinessConnection(){
+  try{
+    const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'begin_meta_business'})}),j=await r.json();
+    if(!r.ok){
+      if(j.code==='META_LOGIN_NOT_READY'){toast('Primero debemos crear la configuración de Facebook Login for Business en Meta.');return}
+      throw new Error(j.error||'No fue posible iniciar Meta');
+    }
+    if(j.authorization_url) window.location.href=j.authorization_url;
+  }catch(err){toast(err.message||'No fue posible iniciar la conexión')}
+}
+async function disconnectMetaBusiness(){
+  const id=document.getElementById('metaDisconnectBtn').dataset.integrationId;if(!id)return;
+  if(!confirm('¿Desconectar el portafolio Meta de esta empresa?'))return;
+  try{
+    const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'disconnect',integration_id:id})}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    toast('Portafolio desconectado');await loadIntegrations();
+  }catch(err){toast(err.message||'No fue posible desconectar')}
+}
+const ROLE_MODULE_DEFAULTS={owner:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','integrations','users','settings'],admin:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','payments','reports','settings'],sales:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],agent:['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','analytics'],inventory:['dashboard','orders','contacts','tasks'],editor:['dashboard','crm','quotes','contacts','tasks'],viewer:['dashboard'],client:['dashboard','crm','analytics','payments','reports']};
+function roleLabel(role){return ({owner:'Dueño',admin:'Administrador',sales:'Ventas',inventory:'Inventario / Bodega',editor:'Editor',viewer:'Solo lectura',client:'Cliente',agent:'Ventas'})[role]||'Usuario'}
+function moduleAllowed(module){
+  if(crmSession?.platform_admin||crmSession?.role==='owner')return true;
+  if(module==='integrations')return false;
+  if(module==='users')return crmSession?.permissions?.actions?.users?.manage===true;
+  const explicit=crmSession?.permissions?.modules?.[module];
+  if(typeof explicit==='boolean')return explicit;
+  return (ROLE_MODULE_DEFAULTS[crmSession?.role]||[]).includes(module);
+}
+function applyNavigationPermissions(){
+  const pageToModule={dashboard:'dashboard',inbox:'inbox',crm:'crm',cap:'cap',quotes:'quotes',orders:'orders',contacts:'contacts',tasks:'tasks',ai:'ai',automations:'automations',analytics:'analytics',integrations:'integrations',admin:'users',settings:'settings'};
+  document.querySelectorAll('.nav-item[data-page]').forEach(btn=>{const mod=pageToModule[btn.dataset.page];btn.classList.toggle('hidden',mod&&!moduleAllowed(mod))});
+  const currentModule=pageToModule[currentPage];
+  if(currentModule&&!moduleAllowed(currentModule)){
+    const next=document.querySelector('.nav-item[data-page]:not(.hidden)');
+    if(next)showPage(next.dataset.page,next);
+  }
+}
+function permissionsForRole(role){const set=new Set(ROLE_MODULE_DEFAULTS[role]||[]);const modules={};['dashboard','inbox','crm','cap','quotes','orders','contacts','tasks','ai','automations','analytics','settings'].forEach(m=>modules[m]=set.has(m));return modules}
+function collectPermissions(prefix=''){const attr=prefix?'data-edit-permission-module':'data-permission-module';const modules={};document.querySelectorAll('['+attr+']').forEach(x=>modules[x.getAttribute(attr)]=x.checked);return {modules}}
+function syncPermissionChecksFromRole(){const mods=permissionsForRole(document.getElementById('newUserRole').value);document.querySelectorAll('[data-permission-module]').forEach(x=>x.checked=!!mods[x.dataset.permissionModule])}
+function syncEditPermissionChecksFromRole(){const mods=permissionsForRole(document.getElementById('editUserRole').value);document.querySelectorAll('[data-edit-permission-module]').forEach(x=>x.checked=!!mods[x.dataset.editPermissionModule])}
+function money(v){return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0)}
+function dateTime(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(_){return '—'}}
+async function commercialGet(type){const r=await fetch('/api/crm-commercial?type='+encodeURIComponent(type),{cache:'no-store'});if(r.status===401){await ensureCrmAuth(false);throw new Error('Sesión requerida')}const j=await r.json();if(!r.ok)throw new Error(j.error||'Error');return j}
+async function commercialSend(method,body,url='/api/crm-commercial'){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error||'No fue posible completar la operación');return j}
+async function loadCurrentModule(force=false){
+  if(!crmSession&&currentPage!=='inbox'){return}
+  const loaders={dashboard:loadDashboard,inbox:()=>ensureInboxAuth(),crm:loadOpportunities,cap:loadCap,quotes:loadQuotes,orders:loadOrders,contacts:loadCentralContacts,tasks:loadTasks,analytics:loadDashboard,integrations:loadIntegrations,admin:loadAdmin};
+  const fn=loaders[currentPage];if(fn)try{await fn(force)}catch(_){}
+}
+async function loadDashboard(){
+  try{const j=await commercialGet('dashboard'),m=j.metrics||{};document.getElementById('mOpportunities').textContent=m.opportunities||0;document.getElementById('mPipelineValue').textContent=money(m.pipeline_value);document.getElementById('mQuotes').textContent=m.quotes_open||0;document.getElementById('mOrders').textContent=m.orders_active||0;document.getElementById('mTasks').textContent=m.tasks_open||0;document.getElementById('mWonValue').textContent=money(m.won_value);const el=document.getElementById('dashboardStages');if(el){const labels={new:'Nuevo',contacted:'Contactado',qualified:'Calificado',proposal:'Propuesta',negotiation:'Negociación',won:'Ganado',lost:'Perdido'};el.innerHTML=(j.stage_counts||[]).length?(j.stage_counts||[]).map(x=>'<div class="info-row"><span>'+esc(labels[x.stage]||x.stage)+'</span><span>'+Number(x.count||0)+'</span></div>').join(''):'<div class="empty-state">Aún no hay oportunidades.</div>'}}catch(_){toast('No fue posible cargar el dashboard')}}
+let centralOpportunities=[];
+async function loadOpportunities(){
+  try{const j=await commercialGet('opportunities');centralOpportunities=j.opportunities||[];const body=document.getElementById('opportunitiesBody');if(body)body.innerHTML=centralOpportunities.length?centralOpportunities.map(o=>{const cap=Array.isArray(o.cap)?o.cap[0]:o.cap;return '<tr><td><b>'+esc(o.title)+'</b><br><span style="color:var(--muted)">'+esc(o.source||'Sin origen')+'</span></td><td>'+esc(o.stage||'—')+'</td><td>'+money(o.value)+'</td><td>'+esc(o.product||'—')+'</td><td>'+esc(o.city||'—')+'</td><td><span class="cap-chip">'+esc(cap?.step||o.cap_status||'inicio')+'</span></td><td>'+dateTime(o.next_follow_up_at)+'</td></tr>'}).join(''):'<tr><td colspan="7" class="empty-state">Aún no hay oportunidades.</td></tr>';if(currentPage==='cap')renderCapTable()}catch(_){toast('No fue posible cargar oportunidades')}}
+async function createOpportunity(e){e.preventDefault();try{await commercialSend('POST',{action:'create_opportunity',title:document.getElementById('oppTitle').value,stage:document.getElementById('oppStage').value,value:document.getElementById('oppValue').value,product:document.getElementById('oppProduct').value,city:document.getElementById('oppCity').value,source:document.getElementById('oppSource').value,next_follow_up_at:document.getElementById('oppFollowup').value||null,notes:document.getElementById('oppNotes').value});e.target.reset();toast('Oportunidad creada');await loadOpportunities();await loadDashboard()}catch(err){toast(err.message)}}
+async function loadCap(){await loadOpportunities();renderCapTable()}
+function renderCapTable(){const body=document.getElementById('capBody');if(!body)return;body.innerHTML=centralOpportunities.length?centralOpportunities.map(o=>{const cap=Array.isArray(o.cap)?o.cap[0]:o.cap||{};return '<tr><td><b>'+esc(o.title)+'</b></td><td>'+esc(o.stage||'—')+'</td><td>'+esc(cap.step||'inicio')+'</td><td>'+esc(cap.decision||'—')+'</td><td>'+esc(cap.label||'—')+'</td><td>'+esc(cap.next_action||'—')+'<br><span style="color:var(--muted)">'+dateTime(cap.next_action_at)+'</span></td><td>'+Number(cap.sequence||0)+'</td><td><div class="inline-actions"><button class="btn" onclick="editCap(\''+o.id+'\')">Editar</button><button class="btn" onclick="resetCap(\''+o.id+'\')">Reiniciar</button></div></td></tr>'}).join(''):'<tr><td colspan="8" class="empty-state">Sin oportunidades CAP.</td></tr>'}
+async function editCap(id){const o=centralOpportunities.find(x=>x.id===id);if(!o)return;const cap=Array.isArray(o.cap)?o.cap[0]:o.cap||{};const step=prompt('Paso actual de CAP',cap.step||'inicio');if(step===null)return;const decision=prompt('Decisión',cap.decision||'');if(decision===null)return;const label=prompt('Etiqueta',cap.label||'');if(label===null)return;const next=prompt('Próxima acción',cap.next_action||'');if(next===null)return;try{await commercialSend('PATCH',{action:'update_cap',opportunity_id:id,step,decision,label,next_action:next,sequence:Number(cap.sequence||0)+1});toast('CAP actualizado');await loadCap()}catch(err){toast(err.message)}}
+async function resetCap(id){if(!confirm('¿Reiniciar CAP para esta oportunidad?'))return;try{await commercialSend('POST',{action:'reset_cap',opportunity_id:id,reason:'Reinicio manual desde CRM'});toast('CAP reiniciado');await loadCap()}catch(err){toast(err.message)}}
+async function loadCentralContacts(){try{const j=await commercialGet('contacts'),rows=j.contacts||[],b=document.getElementById('centralContactsBody');if(!b)return;b.innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+esc(x.display_name||'Contacto · '+String(x.external_user_id||'').slice(-6))+'</b></td><td>'+esc(x.phone||'—')+'</td><td>'+esc(x.email||'—')+'</td><td>'+esc(x.channel?.channel_type||'—')+'</td><td>'+esc(x.metadata?.business||'—')+'</td><td>'+esc(x.metadata?.city||'—')+'</td><td>'+dateTime(x.updated_at)+'</td></tr>').join(''):'<tr><td colspan="7" class="empty-state">Sin contactos.</td></tr>'}catch(_){toast('No fue posible cargar contactos')}}
+async function loadQuotes(){try{const j=await commercialGet('quotes'),rows=j.quotes||[],b=document.getElementById('quotesBody');if(!b)return;b.innerHTML=rows.length?rows.map(q=>'<tr><td><b>'+esc(q.quote_number)+'</b></td><td>'+esc(q.status)+'</td><td>'+money(q.subtotal)+'</td><td>'+money(q.shipping_cost)+'</td><td><b>'+money(q.total)+'</b></td><td>'+esc(q.valid_until||'—')+'</td><td>'+(q.status==='converted'?'<span class="status-pill">Convertida</span>':'<button class="btn primary" onclick="convertQuote(\''+q.id+'\')">Convertir a pedido</button>')+'</td></tr>').join(''):'<tr><td colspan="7" class="empty-state">Sin cotizaciones.</td></tr>'}catch(_){toast('No fue posible cargar cotizaciones')}}
+async function createQuote(e){e.preventDefault();try{await commercialSend('POST',{action:'create_quote',discount:document.getElementById('quoteDiscount').value,shipping_cost:document.getElementById('quoteShipping').value,valid_until:document.getElementById('quoteValidUntil').value||null,observations:document.getElementById('quoteObservations').value,items:[{description:document.getElementById('quoteDescription').value,quantity:document.getElementById('quoteQty').value,unit_price:document.getElementById('quoteUnitPrice').value}]});e.target.reset();document.getElementById('quoteQty').value=1;document.getElementById('quoteDiscount').value=0;document.getElementById('quoteShipping').value=0;toast('Cotización creada');await loadQuotes()}catch(err){toast(err.message)}}
+async function convertQuote(id){if(!confirm('¿Convertir esta cotización en pedido?'))return;try{await commercialSend('POST',{action:'convert_quote_to_order',quote_id:id});toast('Pedido creado');await loadQuotes();if(currentPage==='orders')await loadOrders()}catch(err){toast(err.message)}}
+async function loadOrders(){try{const j=await commercialGet('orders'),rows=j.orders||[],b=document.getElementById('ordersBody');if(!b)return;b.innerHTML=rows.length?rows.map(o=>'<tr><td><b>'+esc(o.order_number)+'</b></td><td>'+esc(o.contact?.display_name||'—')+'</td><td><b>'+money(o.total)+'</b></td><td>'+esc(o.payment_status||'—')+'</td><td>'+esc(o.fulfillment_status||'—')+'</td><td>'+esc(o.tracking_number||'—')+'</td><td>'+esc(o.status||'—')+'</td><td><div class="inline-actions">'+(o.status==='active'?'<button class="btn" onclick="cancelOrder(\''+o.id+'\')">Anular</button>':'')+'<button class="btn danger" onclick="deleteOrder(\''+o.id+'\')">Eliminar</button></div></td></tr>').join(''):'<tr><td colspan="8" class="empty-state">Sin pedidos.</td></tr>'}catch(_){toast('No fue posible cargar pedidos')}}
+async function cancelOrder(id){if(!confirm('¿Anular este pedido? Quedará registro en auditoría.'))return;try{await commercialSend('PATCH',{action:'cancel_order',id,reason:'Anulado desde CRM'});toast('Pedido anulado');await loadOrders()}catch(err){toast(err.message)}}
+async function deleteOrder(id){if(!confirm('¿Eliminar este pedido? Solo se permite si no tiene guía ni trazabilidad sensible.'))return;try{await commercialSend('DELETE',null,'/api/crm-commercial?type=order&id='+encodeURIComponent(id));toast('Pedido eliminado');await loadOrders()}catch(err){toast(err.message)}}
+async function loadTasks(){try{const j=await commercialGet('tasks'),rows=j.tasks||[],b=document.getElementById('tasksBody');if(!b)return;b.innerHTML=rows.length?rows.map(t=>'<tr><td><b>'+esc(t.title)+'</b><br><span style="color:var(--muted)">'+esc(t.description||'')+'</span></td><td>'+esc(t.priority)+'</td><td>'+dateTime(t.due_at)+'</td><td>'+esc(t.status)+'</td><td>'+(t.status==='done'?'<span class="status-pill">Hecha</span>':'<button class="btn" onclick="completeTask(\''+t.id+'\')">Completar</button>')+'</td></tr>').join(''):'<tr><td colspan="5" class="empty-state">Sin tareas.</td></tr>'}catch(_){toast('No fue posible cargar tareas')}}
+async function createTask(e){e.preventDefault();try{await commercialSend('POST',{action:'create_task',title:document.getElementById('taskTitle').value,due_at:document.getElementById('taskDue').value||null,priority:document.getElementById('taskPriority').value,description:document.getElementById('taskDescription').value});e.target.reset();toast('Tarea creada');await loadTasks();await loadDashboard()}catch(err){toast(err.message)}}
+async function completeTask(id){try{await commercialSend('PATCH',{action:'update_task',id,status:'done'});toast('Tarea completada');await loadTasks()}catch(err){toast(err.message)}}
+async function loadAdmin(){
+  if(!crmSession){const ok=await ensureCrmAuth(false);if(!ok)return}
+  try{
+    const r=await fetch('/api/crm-admin',{cache:'no-store'}),j=await r.json();
+    if(r.status===401){await ensureCrmAuth(false);return}
+    if(!r.ok)throw new Error(j.error||'No tienes permiso para administrar usuarios');
+    adminOrganizations=j.organizations||[];adminMemberships=j.memberships||[];
+    const body=document.getElementById('userAdminBody');
+    body.innerHTML=adminMemberships.length?adminMemberships.map(m=>{const mods=m.permissions?.modules||permissionsForRole(m.role);const names=Object.entries(mods).filter(([,v])=>v).map(([k])=>({dashboard:'Dashboard',inbox:'Bandeja',crm:'CRM',cap:'CAP',quotes:'Cotizaciones',orders:'Pedidos',contacts:'Contactos',tasks:'Tareas',ai:'IA',automations:'Automatizaciones',analytics:'Analítica',settings:'Configuración'})[k]||k);const action=m.role==='owner'?'<span class="role-pill">Acceso principal</span>':'<button class="btn" onclick="openUserPermissions(\''+m.id+'\')">Permisos</button>';return '<tr><td><b>'+esc(m.display_name||m.email)+'</b><br><span style="color:var(--muted)">'+esc(m.email)+'</span></td><td><span class="role-pill">'+roleLabel(m.role)+'</span></td><td>'+esc(names.join(', ')||'Sin módulos')+'</td><td>'+esc(m.status)+'</td><td>'+action+'</td></tr>'}).join(''):'<tr><td colspan="5">Sin usuarios creados.</td></tr>';
+    syncPermissionChecksFromRole();
+  }catch(err){toast(err.message||'No fue posible cargar usuarios')}
+}
+async function createCrmUser(e){
+  e.preventDefault();
+  const body={action:'create_user',organization_id:crmSession?.organization?.id,display_name:document.getElementById('newUserName').value.trim(),email:document.getElementById('newUserEmail').value.trim(),password:document.getElementById('newUserPassword').value,role:document.getElementById('newUserRole').value,permissions:collectPermissions()};
+  try{
+    const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    document.getElementById('newUserName').value='';document.getElementById('newUserEmail').value='';document.getElementById('newUserPassword').value='';
+    toast('Usuario creado');await loadAdmin();
+  }catch(err){toast(err.message||'No fue posible crear el usuario')}
+}
+function openUserPermissions(id){
+  const m=adminMemberships.find(x=>x.id===id);if(!m)return;
+  document.getElementById('editMembershipId').value=m.id;document.getElementById('editUserLabel').textContent=(m.display_name||m.email)+' · '+m.email;document.getElementById('editUserRole').value=m.role==='agent'?'sales':m.role;
+  const mods=m.permissions?.modules&&Object.keys(m.permissions.modules).length?m.permissions.modules:permissionsForRole(m.role);
+  document.querySelectorAll('[data-edit-permission-module]').forEach(x=>x.checked=!!mods[x.dataset.editPermissionModule]);
+  document.getElementById('userPermissionsModal').classList.remove('hidden');
+}
+function closeUserPermissions(){document.getElementById('userPermissionsModal').classList.add('hidden')}
+async function saveUserPermissions(e){
+  e.preventDefault();const id=document.getElementById('editMembershipId').value;
+  try{
+    const r=await fetch('/api/crm-admin',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update_membership',membership_id:id,role:document.getElementById('editUserRole').value,permissions:collectPermissions('edit')})}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'No fue posible guardar');
+    closeUserPermissions();toast('Permisos actualizados');await loadAdmin();
+  }catch(err){toast(err.message)}
+}
+function closeMobileChat(){document.getElementById('chatPane').classList.add('mobile-hidden');activeConversationId=null;activeConversationData=null;renderConversationList()}
+fillStatus();render();syncPermissionChecksFromRole();renderLoginContext();ensureCrmAuth(false);
+</script>
+<script src="/crm-execution-ui.js?v=20260923-7"></script>
+<script src="/crm-pipeline-ui.js?v=20260923-10"></script>
+<script src="/crm-guided-ui.js?v=20260923-7"></script>
+<script src="/crm-qa-simulator.js?v=20260923-9"></script>
+<script src="/crm-meta-sync-ui.js?v=20260923-7"></script>
+<script src="/crm-integrations-ui.js?v=20260923-3"></script>
+<script src="/crm-sales-os.js?v=20260923-3"></script>
+<script src="/crm-client-portal.js?v=20260923-4"></script>
+</body>
+</html>

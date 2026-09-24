@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+(function(){
+  if (location.hostname.endsWith('.vercel.app')) {
+    location.replace('https://app.segmenta.online' + location.pathname + location.search + location.hash);
+  }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Segmenta Host</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f4ef;--surface:#fff;--ink:#2d241d;--muted:#7c7065;--line:#e7dfd6;--sidebar:#2b1a0e;--brand:#e67c00;--brand2:#c66500;--soft:#fff0dd;--green:#2e9e6b;--red:#c74c3b;--display:'Space Grotesk',sans-serif;--body:'Inter',sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body)}button,input,select{font:inherit}.hidden{display:none!important}
+.shell{min-height:100vh;display:grid;grid-template-columns:240px 1fr}.sidebar{background:var(--sidebar);color:#fff;padding:20px 16px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700}.mark{width:36px;height:36px;border-radius:11px;background:var(--brand);display:grid;place-items:center}.brand small{display:block;color:#bfaa99;font:600 10px var(--body);letter-spacing:.08em}.side-note{margin-top:34px;color:#bca996;font-size:12px;line-height:1.6}.side-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding-top:14px}.side-bottom b{display:block}.side-bottom span{font-size:11px;color:#bca996}
+.main{min-width:0}.topbar{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 26px;gap:12px}.topbar h2{font:700 17px var(--display);margin:0}.pill{margin-left:auto;background:var(--soft);color:var(--brand2);padding:7px 10px;border-radius:999px;font-size:11px;font-weight:700}.content{padding:28px;max-width:1500px;margin:0 auto}.head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:20px}.head h1{font:700 31px var(--display);margin:3px 0}.head p{margin:0;color:var(--muted);font-size:14px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--brand2);font-weight:800}.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:10px 13px;font-size:12px;font-weight:700;cursor:pointer}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn:hover{border-color:#cfc2b5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px}.stat .k{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.07em}.stat .v{font:700 27px var(--display);margin-top:8px}.workspace{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}.workspace-head{display:flex;align-items:center;padding:15px 17px;border-bottom:1px solid var(--line);gap:10px}.workspace-head h3{font:700 16px var(--display);margin:0}.workspace-head span{font-size:11px;color:var(--muted)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:13px 14px;border-bottom:1px solid var(--line);font-size:12px;text-align:left;white-space:nowrap}th{font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;background:#fbfaf7}.owner{font-size:11px;color:var(--muted);margin-top:3px}.status{display:inline-flex;gap:6px;align-items:center;font-size:10px;font-weight:800}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}.actions{display:flex;gap:7px}.empty{padding:34px;text-align:center;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(35,24,15,.55);display:grid;place-items:center;padding:20px;z-index:30}.card{width:min(460px,100%);background:#fff;border-radius:17px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.18)}.card h2{font:700 22px var(--display);margin:0 0 5px}.card p{font-size:12px;color:var(--muted);margin:0 0 16px}.field{margin-bottom:11px}.field label{display:block;font-size:10px;color:var(--muted);font-weight:800;margin-bottom:5px}.field input,.field select{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:9px;outline:none}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.error{background:#fdecea;color:var(--red);padding:9px;border-radius:8px;font-size:11px;margin-bottom:10px}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}.stats{grid-template-columns:repeat(2,1fr)}.content{padding:18px}} 
+</style>
+<link rel="stylesheet" href="/host-client-panel.css?v=20260923-4">
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="mark">S</div><div>Segmenta<small>HOST CENTRAL</small></div></div>
+  <div class="side-note">Vista global para administrar la plataforma. Desde aquí puedes revisar cada empresa y entrar a su CRM sin mezclar sus datos.</div>
+  <div class="side-bottom"><b id="hostEmail">Host</b><span>Acceso global Segmenta</span></div>
+</aside>
+<main class="main">
+<header class="topbar"><h2>Panel de gestión</h2><span class="pill">Acceso global</span><button class="btn" onclick="logout()">Salir</button></header>
+<section class="content">
+  <div class="head"><div><div class="eyebrow">Control de plataforma</div><h1>Clientes y workspaces</h1><p>Administra clientes, accesos, pagos, resultados y CRM desde un solo panel.</p></div><div class="actions"><button class="btn" onclick="loadHost()">↻ Actualizar</button><button class="btn primary" onclick="openCreateCompany()">＋ Nueva empresa</button></div></div>
+  <div class="stats"><div class="stat"><div class="k">Empresas</div><div class="v" id="sCompanies">0</div></div><div class="stat"><div class="k">Usuarios</div><div class="v" id="sUsers">0</div></div><div class="stat"><div class="k">Conversaciones abiertas</div><div class="v" id="sConversations">0</div></div><div class="stat"><div class="k">Oportunidades</div><div class="v" id="sOpportunities">0</div></div></div>
+  <section class="workspace"><div class="workspace-head"><div><h3>Workspaces</h3><span>Cada empresa tiene usuarios, conexiones y datos aislados.</span></div></div><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Dueño</th><th>Usuarios</th><th>Canales</th><th>Integraciones</th><th>Conversaciones</th><th>Oportunidades</th><th>Acción</th></tr></thead><tbody id="orgBody"><tr><td colspan="8" class="empty">Cargando...</td></tr></tbody></table></div></section>
+</section>
+</main>
+</div>
+
+<div class="modal hidden" id="loginModal"><form class="card" onsubmit="login(event)"><h2>Acceso Host</h2><p>Solo el Host de Segmenta puede entrar a este panel.</p><div class="error hidden" id="loginError">Credenciales inválidas o acceso insuficiente.</div><div class="field"><label>Correo</label><input id="email" type="email" autocomplete="username" required></div><div class="field"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password" required></div><div class="form-actions"><button class="btn primary" type="submit">Entrar</button></div></form></div>
+
+<div class="modal hidden" id="companyModal"><form class="card" onsubmit="createCompany(event)"><h2>Nueva empresa</h2><p>El workspace se crea vacío y separado. Después puedes crear su dueño.</p><div class="field"><label>Nombre</label><input id="companyName" required placeholder="Ej. Empresa ABC"></div><div class="form-actions"><button type="button" class="btn" onclick="closeCompany()">Cancelar</button><button class="btn primary" type="submit">Crear empresa</button></div></form></div>
+
+<div class="modal hidden" id="ownerModal"><form class="card" onsubmit="createOwner(event)"><h2>Crear dueño</h2><p id="ownerOrgLabel">Asigna el acceso principal de esta empresa.</p><input type="hidden" id="ownerOrgId"><div class="field"><label>Nombre</label><input id="ownerName" required></div><div class="field"><label>Correo</label><input id="ownerEmail" type="email" required></div><div class="field"><label>Contraseña inicial</label><input id="ownerPassword" type="password" minlength="8" required></div><div class="form-actions"><button type="button" class="btn" onclick="closeOwner()">Cancelar</button><button class="btn primary" type="submit">Crear dueño</button></div></form></div>
+
+<script>
+let hostData=[];
+function esc(s){return String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+async function session(){
+  try{
+    const r=await fetch('/api/crm-auth',{cache:'no-store'}),j=await r.json();
+    if(!j.authenticated){document.getElementById('loginModal').classList.remove('hidden');return false}
+    if(!j.platform_admin){document.getElementById('loginError').textContent='Este usuario no tiene acceso al panel Host.';document.getElementById('loginError').classList.remove('hidden');document.getElementById('loginModal').classList.remove('hidden');return false}
+    document.getElementById('loginModal').classList.add('hidden');document.getElementById('hostEmail').textContent=j.email||'Host';return true
+  }catch(_){document.getElementById('loginModal').classList.remove('hidden');return false}
+}
+async function login(e){e.preventDefault();document.getElementById('loginError').classList.add('hidden');const r=await fetch('/api/crm-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});const j=await r.json();if(!r.ok||!j.platform_admin){document.getElementById('loginError').classList.remove('hidden');return}document.getElementById('password').value='';await session();await loadHost()}
+async function logout(){await fetch('/api/crm-auth',{method:'DELETE'});location.reload()}
+async function loadHost(){if(!(await session()))return;try{const r=await fetch('/api/crm-host',{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(j.error||'Error');hostData=j.organizations||[];window.hostData=hostData;render();if(window.renderHostClientPanels)window.renderHostClientPanels()}catch(e){document.getElementById('orgBody').innerHTML='<tr><td colspan="8" class="empty">'+esc(e.message)+'</td></tr>'}}
+function render(){
+  document.getElementById('sCompanies').textContent=hostData.length;
+  document.getElementById('sUsers').textContent=hostData.reduce((s,o)=>s+Number(o.stats?.users||0),0);
+  document.getElementById('sConversations').textContent=hostData.reduce((s,o)=>s+Number(o.stats?.conversations||0),0);
+  document.getElementById('sOpportunities').textContent=hostData.reduce((s,o)=>s+Number(o.stats?.opportunities||0),0);
+  document.getElementById('orgBody').innerHTML=hostData.length?hostData.map(o=>'<tr><td><b>'+esc(o.name)+'</b><div class="owner">'+esc(o.slug)+'</div></td><td>'+(o.owner?'<b>'+esc(o.owner.display_name||o.owner.email)+'</b><div class="owner">'+esc(o.owner.email)+'</div>':'<button class="btn" onclick="openOwner(\''+o.id+'\')">Crear dueño</button>')+'</td><td>'+Number(o.stats?.users||0)+'</td><td>'+Number(o.stats?.channels||0)+'</td><td>'+Number(o.stats?.integrations||0)+'</td><td>'+Number(o.stats?.conversations||0)+'</td><td>'+Number(o.stats?.opportunities||0)+'</td><td><div class="actions"><button class="btn" onclick="copyCrmLink(\''+esc(o.slug)+'\')">Copiar enlace</button><button class="btn primary" onclick="enterOrg(\''+esc(o.slug)+'\')">Abrir CRM</button></div></td></tr>').join(''):'<tr><td colspan="8" class="empty">No hay empresas.</td></tr>'
+}
+async function copyCrmLink(slug){const url=location.origin+'/crm?workspace='+encodeURIComponent(slug);try{await navigator.clipboard.writeText(url);alert('Enlace copiado: '+url)}catch(_){prompt('Copia este enlace',url)}}
+async function enterOrg(slug){const r=await fetch('/api/crm-host',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'enter_org',org_slug:slug})}),j=await r.json();if(!r.ok){alert(j.error||'No fue posible abrir el CRM');return}location.href=j.crm_url}
+function openCreateCompany(){document.getElementById('companyModal').classList.remove('hidden')}
+function closeCompany(){document.getElementById('companyModal').classList.add('hidden')}
+async function createCompany(e){e.preventDefault();const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_org',name:document.getElementById('companyName').value.trim()})}),j=await r.json();if(!r.ok){alert(j.error||'No fue posible crear la empresa');return}document.getElementById('companyName').value='';closeCompany();await loadHost()}
+function openOwner(id){const o=hostData.find(x=>x.id===id);document.getElementById('ownerOrgId').value=id;document.getElementById('ownerOrgLabel').textContent='Dueño de '+(o?.name||'empresa');document.getElementById('ownerModal').classList.remove('hidden')}
+function closeOwner(){document.getElementById('ownerModal').classList.add('hidden')}
+async function createOwner(e){e.preventDefault();const body={action:'create_user',organization_id:document.getElementById('ownerOrgId').value,display_name:document.getElementById('ownerName').value.trim(),email:document.getElementById('ownerEmail').value.trim(),password:document.getElementById('ownerPassword').value,role:'owner',permissions:{}};const r=await fetch('/api/crm-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json();if(!r.ok){alert(j.error||'No fue posible crear el dueño');return}document.getElementById('ownerName').value='';document.getElementById('ownerEmail').value='';document.getElementById('ownerPassword').value='';closeOwner();await loadHost()}
+loadHost();
+</script>
+<script src="/host-client-panel.js?v=20260923-4"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/crm",
+      "destination": "https://app.segmenta.online/crm",
+      "permanent": true
+    },
+    {
+      "source": "/host",
+      "destination": "https://app.segmenta.online/host",
+      "permanent": true
+    },
+    {
+      "source": "/portal",
+      "destination": "https://app.segmenta.online/portal",
+      "permanent": true
+    }
+  ]
+}
