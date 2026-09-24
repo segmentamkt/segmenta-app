@@ -168,6 +168,12 @@
     <div class="host-card"><div class="host-card-title-row"><div><h3>Servicios del cliente</h3><p>Contrato, visibilidad y estado operativo por servicio.</p></div><button class="btn" onclick="openClientConfig('${o.id}')">Editar servicios</button></div>
       <div class="host-service-grid">${SERVICES.map(s=>serviceCard(o,s)).join('')}</div>
     </div>
+    <div class="host-card"><h3>Operación del portal</h3><p>Crea tareas y anuncios que el cliente verá directamente en su portal.</p>
+      <div class="host-card-actions">
+        <button class="btn" onclick="createClientPortalTask('${o.id}')">＋ Crear tarea</button>
+        <button class="btn" onclick="createClientAnnouncement('${o.id}')">＋ Publicar anuncio</button>
+      </div>
+    </div>
     <div class="host-card"><h3>Contenido y documentos</h3><p>Publica análisis, informes y facturas visibles para el cliente.</p>
       <div class="host-card-actions">
         <button class="btn" onclick="publishClientAnalysis('${o.id}')">＋ Publicar análisis</button>
@@ -280,6 +286,30 @@
       closeClientPortalModal();await window.loadHost();selectedClientOrg=orgId;setHostTab('clients');
     }catch(err){alert(err.message)}
   }
+
+  window.createClientPortalTask=async function(orgId){
+    const o=(window.hostData||[]).find(x=>x.id===orgId);
+    if(!o?.client?.id){alert('Configura primero el perfil del cliente.');return}
+    const title=prompt('Tarea para '+o.name+':','');if(title===null||!title.trim())return;
+    const description=prompt('Descripción / instrucciones:','');if(description===null)return;
+    const due=prompt('Fecha límite (AAAA-MM-DD, opcional):','');if(due===null)return;
+    const priority=prompt('Prioridad: low, normal, high o urgent','normal');if(priority===null)return;
+    try{
+      await req('/api/client-portal',{action:'create_task',organization_id:orgId,title:title.trim(),description:description.trim(),due_at:due.trim()?due.trim()+'T18:00:00':null,priority:['low','normal','high','urgent'].includes(priority.trim())?priority.trim():'normal'});
+      alert('Tarea publicada en el portal del cliente.');await window.loadHost();
+    }catch(err){alert(err.message)}
+  };
+
+  window.createClientAnnouncement=async function(orgId){
+    const o=(window.hostData||[]).find(x=>x.id===orgId);
+    if(!o?.client?.id){alert('Configura primero el perfil del cliente.');return}
+    const title=prompt('Título del anuncio:','');if(title===null||!title.trim())return;
+    const body=prompt('Mensaje para el cliente:','');if(body===null||!body.trim())return;
+    try{
+      await req('/api/client-portal',{action:'create_announcement',organization_id:orgId,title:title.trim(),body:body.trim()});
+      alert('Anuncio publicado en el portal.');await window.loadHost();
+    }catch(err){alert(err.message)}
+  };
 
   window.publishClientAnalysis=async function(orgId){
     const o=(window.hostData||[]).find(x=>x.id===orgId),client=o?.client;
