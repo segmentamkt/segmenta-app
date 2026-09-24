@@ -25,6 +25,8 @@
   function services(){return portalData?.services||[]}
   function service(key){return services().find(x=>x.service_key===key)||{service_key:key,service_name:SERVICE_UI[key]?.label||key,active_in_plan:false,client_visible:false,status:'inactive',metadata:{}}}
   function visibleServices(){return services().filter(x=>x.client_visible&&SERVICE_UI[x.service_key])}
+  function portalAccess(key){const p=portalData?.portal_settings||{};return key==='crm'?p.crm===true:p[key]!==false}
+  function crmEnabled(){const s=service('crm');return portalAccess('crm')&&s.active_in_plan&&s.client_visible&&s.status!=='inactive'}
   function statusLabel(v){return ({inactive:'Inactivo',setup:'En configuración',active:'Activo',paused:'Pausado',waiting_client:'Esperando información',under_construction:'En construcción',review:'En revisión',published:'Publicado',completed:'Completado'})[v]||v||'Inactivo'}
   function statusClass(v){return ['active','published','completed'].includes(v)?'active':['setup','waiting_client','under_construction','review'].includes(v)?'waiting':v==='paused'?'paused':'inactive'}
 
@@ -49,12 +51,18 @@
   function renderNav(){
     const nav=document.getElementById('clientNav');if(!nav)return;
     const rows=[
-      {id:'summary',label:'Inicio',icon:'⌂'},{id:'services',label:'Servicios',icon:'▦'},
-      {id:'results',label:'Resultados',icon:'↗'},{id:'tasks',label:'Tareas',icon:'✓'},
-      {id:'requests',label:'Solicitudes',icon:'!'},{id:'files',label:'Archivos',icon:'▧'},
-      {id:'announcements',label:'Anuncios',icon:'◉'},{id:'payments',label:'Pagos',icon:'$'}
-    ];
-    nav.innerHTML='<div class="client-nav-label">Tu cuenta</div>'+rows.map(x=>'<button class="client-nav-item '+(portalPage===x.id?'active':'')+'" data-client-page="'+x.id+'"><span class="ico">'+x.icon+'</span>'+esc(x.label)+'</button>').join('');
+      {id:'summary',label:'Inicio',icon:'⌂',always:true},
+      {id:'services',label:'Servicios',icon:'▦'},
+      {id:'results',label:'Resultados',icon:'↗'},
+      {id:'tasks',label:'Tareas',icon:'✓'},
+      {id:'requests',label:'Solicitudes',icon:'!'},
+      {id:'files',label:'Archivos',icon:'▧'},
+      {id:'announcements',label:'Anuncios',icon:'◉'},
+      {id:'payments',label:'Pagos',icon:'$'}
+    ].filter(x=>x.always||portalAccess(x.id));
+    const slug=portalData?.organization?.slug||'';
+    nav.innerHTML=rows.map(x=>'<button class="client-nav-item '+(portalPage===x.id?'active':'')+'" data-client-page="'+x.id+'"><span class="ico">'+x.icon+'</span>'+esc(x.label)+'</button>').join('')
+      +(crmEnabled()?'<a class="client-nav-item client-nav-link" href="/crm?workspace='+encodeURIComponent(slug)+'&client_crm=1"><span class="ico">C</span>Abrir CRM</a>':'');
     nav.querySelectorAll('[data-client-page]').forEach(b=>b.addEventListener('click',()=>showClientPage(b.dataset.clientPage)));
   }
 
@@ -104,29 +112,34 @@
   function summaryHtml(){
     const d=portalData||{},c=d.client||{},s=d.summary||{},active=visibleServices().filter(x=>x.active_in_plan),pay=payState();
     const recent=[
-      ...(d.announcements||[]).map(x=>({at:x.created_at,icon:'◉',title:x.title,meta:'Anuncio'})),
-      ...(d.requests||[]).map(x=>({at:x.created_at,icon:'!',title:x.title,meta:'Solicitud · '+statusLabel(x.status)})),
-      ...(d.files||[]).map(x=>({at:x.created_at,icon:'▧',title:x.file_name,meta:'Archivo'})),
-      ...(d.tasks||[]).map(x=>({at:x.updated_at||x.created_at,icon:'✓',title:x.title,meta:'Tarea · '+statusLabel(x.status)}))
+      ...(portalAccess('announcements')?(d.announcements||[]).map(x=>({at:x.created_at,icon:'◉',title:x.title,meta:'Anuncio'})):[]),
+      ...(portalAccess('requests')?(d.requests||[]).map(x=>({at:x.created_at,icon:'!',title:x.title,meta:'Solicitud · '+statusLabel(x.status)})):[]),
+      ...(portalAccess('files')?(d.files||[]).map(x=>({at:x.created_at,icon:'▧',title:x.file_name,meta:'Archivo'})):[]),
+      ...(portalAccess('tasks')?(d.tasks||[]).map(x=>({at:x.updated_at||x.created_at,icon:'✓',title:x.title,meta:'Tarea · '+statusLabel(x.status)})):[])
     ].sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,7);
-    return '<div class="client-welcome"><div><div class="eyebrow">Portal Segmenta</div><h1>'+esc(d.organization?.name||c.name||'Cliente')+'</h1><p>Servicios, resultados, pendientes y archivos de tu cuenta en un solo lugar.</p></div><span class="client-badge">'+active.length+' servicio(s) activo(s)</span></div>'+
-      '<div class="client-metrics">'+
-        '<div class="client-metric"><div class="k">Servicios activos</div><div class="v">'+active.length+'</div><div class="s">'+visibleServices().length+' visibles</div></div>'+
-        '<div class="client-metric"><div class="k">Tareas pendientes</div><div class="v">'+number(s.tasks_open||0)+'</div><div class="s">'+number(s.tasks_waiting_client||0)+' esperando cliente</div></div>'+
-        '<div class="client-metric"><div class="k">Solicitudes abiertas</div><div class="v">'+number(s.requests_open||0)+'</div><div class="s">Cambios y reportes</div></div>'+
-        '<div class="client-metric"><div class="k">Próximo pago</div><div class="v">'+esc(date(c.next_payment_date))+'</div><div class="s">'+esc(pay.label)+'</div></div>'+
-      '</div>'+
-      '<div class="client-home-grid"><section class="client-card"><h3>Servicios</h3><p>Lo que Segmenta gestiona actualmente.</p><div class="client-service-grid">'+
-        (visibleServices().length?visibleServices().slice(0,4).map(serviceOverviewCard).join(''):'<div class="client-empty">No hay servicios visibles todavía.</div>')+
-      '</div></section><aside class="client-card"><h3>Acciones rápidas</h3><p>Envía información sin depender de WhatsApp.</p><div style="display:grid;gap:8px"><button class="client-action" onclick="showClientPortalPage(\'requests\')">Reportar problema</button><button class="client-action" style="background:#2c2119" onclick="showClientPortalPage(\'files\')">Subir archivo</button></div><div class="client-payment '+pay.cls+'" style="margin-top:12px"><span class="client-payment-dot"></span><div><b>'+esc(pay.label)+'</b><span>Próximo pago: '+date(c.next_payment_date)+'</span></div></div></aside></div>'+
-      '<div class="client-card" style="margin-top:12px"><h3>Actividad reciente</h3><p>Últimos movimientos de tu cuenta.</p><div class="client-list">'+
-        (recent.length?recent.map(x=>'<div class="client-list-item"><div><b>'+esc(x.icon+' '+x.title)+'</b><p>'+esc(x.meta)+'</p></div><div class="right">'+date(x.at)+'</div></div>').join(''):'<div class="client-empty">Todavía no hay actividad registrada.</div>')+
-      '</div></div>';
+    const metrics=[
+      portalAccess('services')?'<div class="client-metric"><div class="k">Servicios activos</div><div class="v">'+active.length+'</div><div class="s">'+visibleServices().length+' visibles</div></div>':'',
+      portalAccess('tasks')?'<div class="client-metric"><div class="k">Tareas pendientes</div><div class="v">'+number(s.tasks_open||0)+'</div><div class="s">'+number(s.tasks_waiting_client||0)+' esperando cliente</div></div>':'',
+      portalAccess('requests')?'<div class="client-metric"><div class="k">Solicitudes abiertas</div><div class="v">'+number(s.requests_open||0)+'</div><div class="s">Cambios y reportes</div></div>':'',
+      portalAccess('payments')?'<div class="client-metric"><div class="k">Próximo pago</div><div class="v">'+esc(date(c.next_payment_date))+'</div><div class="s">'+esc(pay.label)+'</div></div>':''
+    ].filter(Boolean).join('');
+    const quick=[
+      portalAccess('requests')?'<button class="client-action" onclick="showClientPortalPage(\'requests\')">Reportar problema</button>':'',
+      portalAccess('files')?'<button class="client-action secondary" onclick="showClientPortalPage(\'files\')">Subir archivo</button>':'',
+      crmEnabled()?'<a class="client-action crm-action" href="/crm?workspace='+encodeURIComponent(d.organization?.slug||'')+'&client_crm=1">Entrar al CRM</a>':''
+    ].filter(Boolean).join('');
+    return '<div class="client-welcome"><div><div class="eyebrow">Portal de cliente</div><h1>'+esc(d.organization?.name||c.name||'Cliente')+'</h1><p>Tu operación con Segmenta, organizada según los accesos habilitados para tu cuenta.</p></div><span class="client-badge">'+active.length+' servicio(s) activo(s)</span></div>'+
+      (metrics?'<div class="client-metrics">'+metrics+'</div>':'')+
+      '<div class="client-home-grid">'+
+      (portalAccess('services')?'<section class="client-card"><h3>Servicios</h3><p>Lo que Segmenta gestiona actualmente.</p><div class="client-service-grid">'+(visibleServices().length?visibleServices().slice(0,4).map(serviceOverviewCard).join(''):'<div class="client-empty">No hay servicios visibles todavía.</div>')+'</div></section>':'')+
+      '<aside class="client-card"><h3>Acciones disponibles</h3><p>Solo aparecen las herramientas habilitadas para tu cuenta.</p><div class="portal-quick-actions">'+(quick||'<div class="client-empty">No hay acciones disponibles.</div>')+'</div>'+(portalAccess('payments')?'<div class="client-payment '+pay.cls+'" style="margin-top:12px"><span class="client-payment-dot"></span><div><b>'+esc(pay.label)+'</b><span>Próximo pago: '+date(c.next_payment_date)+'</span></div></div>':'')+'</aside></div>'+
+      ((portalAccess('tasks')||portalAccess('requests')||portalAccess('files')||portalAccess('announcements'))?'<div class="client-card" style="margin-top:14px"><h3>Actividad reciente</h3><p>Últimos movimientos visibles de tu cuenta.</p><div class="client-list">'+(recent.length?recent.map(x=>'<div class="client-list-item"><div><b>'+esc(x.icon+' '+x.title)+'</b><p>'+esc(x.meta)+'</p></div><div class="right">'+date(x.at)+'</div></div>').join(''):'<div class="client-empty">Todavía no hay actividad registrada.</div>')+'</div></div>':'');
   }
 
   function serviceOverviewCard(s){
     const ui=SERVICE_UI[s.service_key]||{label:s.service_name||s.service_key,icon:'•',group:'Servicio'},metrics=serviceMetrics(s.service_key);
-    return '<article class="client-service-card"><div class="client-service-head"><span class="client-service-icon">'+esc(ui.icon)+'</span><div><b>'+esc(ui.label)+'</b><small>'+esc(ui.group)+'</small></div><span class="client-service-status '+statusClass(s.status)+'">'+esc(statusLabel(s.status))+'</span></div><div class="client-service-plan">'+(s.active_in_plan?'✓ Activo en tu plan':'No activo en tu plan')+'</div><div class="client-service-mini">'+(metrics.length?metrics.slice(0,2).map(m=>'<span><b>'+esc(m.value)+'</b><small>'+esc(m.label)+'</small></span>').join(''):'<span class="no-data">Sin métricas conectadas</span>')+'</div></article>';
+    const crmAction=s.service_key==='crm'&&crmEnabled()?'<a class="client-service-open" href="/crm?workspace='+encodeURIComponent(portalData?.organization?.slug||'')+'&client_crm=1">Abrir CRM →</a>':'';
+    return '<article class="client-service-card"><div class="client-service-head"><span class="client-service-icon">'+esc(ui.icon)+'</span><div><b>'+esc(ui.label)+'</b><small>'+esc(ui.group)+'</small></div><span class="client-service-status '+statusClass(s.status)+'">'+esc(statusLabel(s.status))+'</span></div><div class="client-service-plan">'+(s.active_in_plan?'✓ Activo en tu plan':'No activo en tu plan')+'</div><div class="client-service-mini">'+(metrics.length?metrics.slice(0,2).map(m=>'<span><b>'+esc(m.value)+'</b><small>'+esc(m.label)+'</small></span>').join(''):'<span class="no-data">Sin métricas conectadas</span>')+'</div>'+crmAction+'</article>';
   }
 
   function serviceHeader(key){
@@ -313,6 +326,7 @@
   function showClientPage(page){
     const allowed=['summary','services','results','tasks','requests','files','announcements','payments'];
     if(!allowed.includes(page))page='summary';
+    if(page!=='summary'&&!portalAccess(page))page='summary';
     portalPage=page;
     document.querySelectorAll('.client-portal-page').forEach(x=>x.classList.add('hidden'));
     const el=document.getElementById('page-client-'+page);if(el)el.classList.remove('hidden');
@@ -320,6 +334,7 @@
     const labels={summary:'Inicio',services:'Servicios',results:'Resultados',tasks:'Tareas',requests:'Solicitudes',files:'Archivos',announcements:'Anuncios',payments:'Pagos'};
     const crumb=document.getElementById('crumbTitle');if(crumb)crumb.textContent=labels[page]||'Inicio';
   }
+  window.showClientPortalPage=showClientPage;
 
   async function load(){
     if(!clientMode())return;
