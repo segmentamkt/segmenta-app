@@ -368,9 +368,10 @@ module.exports = async function handler(req, res) {
     if (!canManageIntegrations(session)) return res.status(403).json({ ok: false, error: 'Solo el dueño de la empresa o el Host pueden gestionar integraciones' });
 
     if (req.method === 'GET') {
-      const [integrations, channels] = await Promise.all([
+      const [integrations, channels, webhookReceipts] = await Promise.all([
         sb(`crm_integrations?organization_id=eq.${org.id}&select=id,provider,integration_type,display_name,external_account_id,status,metadata,connected_at,last_sync_at,last_error,created_at,updated_at&order=provider.asc,created_at.desc`),
-        sb(`crm_channels?organization_id=eq.${org.id}&select=id,channel_type,external_account_id,external_account_name,status,integration_id,metadata,updated_at&order=channel_type.asc`)
+        sb(`crm_channels?organization_id=eq.${org.id}&select=id,channel_type,external_account_id,external_account_name,status,integration_id,metadata,updated_at&order=channel_type.asc`),
+        sb('meta_webhook_receipts?object_type=eq.page&select=received_at,result,signature_valid,event_count&order=received_at.desc&limit=1')
       ]);
       return res.status(200).json({
         ok: true,
@@ -383,6 +384,13 @@ module.exports = async function handler(req, res) {
             config_id_configured: Boolean(META_LOGIN_CONFIG_ID),
             app_secret_configured: Boolean(META_APP_SECRET),
             ready: Boolean(META_APP_ID && META_LOGIN_CONFIG_ID && META_APP_SECRET)
+          },
+          meta_webhook: {
+            delivery_detected: Boolean(webhookReceipts?.[0]?.received_at),
+            last_delivery_at: webhookReceipts?.[0]?.received_at || null,
+            last_result: webhookReceipts?.[0]?.result || null,
+            signature_valid: webhookReceipts?.[0]?.signature_valid ?? null,
+            event_count: webhookReceipts?.[0]?.event_count || 0
           }
         }
       });
