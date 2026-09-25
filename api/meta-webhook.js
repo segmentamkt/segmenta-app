@@ -37,6 +37,42 @@ async function sb(path, options = {}) {
   return data;
 }
 
+async function createWebhookReceipt(req, payload, signatureValid) {
+  try {
+    const entries = Array.isArray(payload?.entry) ? payload.entry : [];
+    const entryIds = entries.map(x => x?.id).filter(Boolean).slice(0, 25);
+    const eventCount = entries.reduce((sum, entry) =>
+      sum + (Array.isArray(entry?.messaging) ? entry.messaging.length : 0)
+          + (Array.isArray(entry?.changes) ? entry.changes.length : 0), 0);
+    const rows = await sb('meta_webhook_receipts', {
+      method:'POST',
+      headers:{ Prefer:'return=representation' },
+      body:JSON.stringify({
+        object_type:String(payload?.object || '').toLowerCase() || null,
+        entry_ids:entryIds,
+        signature_present:Boolean(req.headers['x-hub-signature-256']),
+        signature_valid:signatureValid,
+        event_count:eventCount,
+        result:signatureValid ? 'accepted' : 'rejected_signature'
+      })
+    });
+    return rows?.[0]?.id || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function finishWebhookReceipt(id, result, error = null) {
+  if (!id) return;
+  try {
+    await sb(`meta_webhook_receipts?id=eq.${encodeURIComponent(id)}`, {
+      method:'PATCH',
+      headers:{ Prefer:'return=minimal' },
+      body:JSON.stringify({ result, error:error ? String(error).slice(0,500) : null })
+    });
+  } catch (_) {}
+}
+
 async function graphGet(path, token) {
   const url = new URL(`https://graph.facebook.com/v26.0/${String(path).replace(/^\//,'')}`);
   const response = await fetch(url.toString(), {
@@ -201,9 +237,13 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    if (!verifySignature(req)) return res.status(401).json({ ok: false, error: 'Invalid signature' });
-
     const payload = req.body || {};
+    const signatureValid = verifySignature(req);
+    const receiptId = await createWebhookReceipt(req, payload, signatureValid);
+    if (!signatureValid) {
+      await finishWebhookReceipt(receiptId, 'rejected_signature', 'Invalid signature');
+      return res.status(401).json({ ok: false, error: 'Invalid signature' });
+    }
     const objectType = String(payload.object || '').toLowerCase();
     const channelType = objectType === 'instagram' ? 'instagram' : 'facebook_messenger';
     const leadEvents = [];
@@ -272,6 +312,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    await finishWebhookReceipt(receiptId, 'processed:' + storedMessages + '/' + messageEvents.length);
     return res.status(200).json({
       ok: true,
       version: WEBHOOK_VERSION,
