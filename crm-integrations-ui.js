@@ -48,11 +48,17 @@
     }
     if(item.id==='messenger'){
       const rows=groupChannels('facebook_messenger');
+      const pageSubscribed=rows.some(x=>x.status==='connected'&&x.metadata?.subscription_ok===true);
+      const webhookOk=hubState.capabilities?.meta_webhook?.delivery_detected===true;
       return {
-        status:connected(rows)?'connected':'off',
-        badge:connected(rows)?'CONECTADO':'NO CONECTADO',
+        status:webhookOk&&pageSubscribed?'connected':pageSubscribed?'pending':'off',
+        badge:webhookOk&&pageSubscribed?'CONECTADO':pageSubscribed?'WEBHOOK POR VALIDAR':'NO CONECTADO',
         subtitle:rows.length?(rows.map(x=>x.external_account_name||x.external_account_id).join(' · ')):'Sin página conectada',
-        note:rows.length?rows.length+' página'+(rows.length===1?'':'s')+' detectada'+(rows.length===1?'':'s'):'Conecta una página de Facebook.',
+        note:webhookOk&&pageSubscribed
+          ? 'Página vinculada y webhook recibiendo eventos.'
+          : pageSubscribed
+            ? 'La Página está vinculada, pero Meta todavía no ha entregado ningún evento al webhook.'
+            : 'Conecta una página de Facebook.',
         rows
       };
     }
