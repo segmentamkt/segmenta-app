@@ -132,24 +132,45 @@ module.exports = async function handler(req, res) {
     const displayName = business?.name || identity?.name || 'Meta Business Portfolio';
 
     const encryptedCredential = encryptCredential(accessToken);
+    const now = new Date().toISOString();
 
-    await patchIntegration(integration.id, integration.organization_id, {
+    const existingRows = await sb(
+      `crm_integrations?organization_id=eq.${encodeURIComponent(integration.organization_id)}&provider=eq.meta&integration_type=eq.business_portfolio&external_account_id=eq.${encodeURIComponent(externalId)}&id=neq.${encodeURIComponent(integration.id)}&select=id,metadata&limit=1`
+    );
+    const existing = existingRows?.[0] || null;
+    const targetId = existing?.id || integration.id;
+    const baseMetadata = existing?.metadata || integration.metadata || {};
+
+    await patchIntegration(targetId, integration.organization_id, {
       credential_encrypted: encryptedCredential,
       status: 'connected',
       display_name: displayName,
       external_account_id: externalId,
-      connected_at: new Date().toISOString(),
+      connected_at: now,
       last_error: null,
       metadata: {
-        ...(integration.metadata || {}),
+        ...baseMetadata,
         phase: 'connected',
         token_type: tokenData.token_type || null,
         expires_in: tokenData.expires_in || null,
         meta_identity: identity,
         businesses,
-        connected_at: new Date().toISOString()
+        connected_at: now
       }
     });
+
+    if (existing) {
+      await patchIntegration(integration.id, integration.organization_id, {
+        status: 'disconnected',
+        last_error: null,
+        metadata: {
+          ...(integration.metadata || {}),
+          phase: 'superseded',
+          superseded_by: existing.id,
+          superseded_at: now
+        }
+      });
+    }
 
     return crmRedirect(res, stateData.organization_slug, { meta: 'connected' });
   } catch (error) {
