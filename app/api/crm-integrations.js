@@ -6,6 +6,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.s
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const META_APP_ID = process.env.META_APP_ID || '1069309302411448';
 const META_LOGIN_CONFIG_ID = process.env.META_LOGIN_CONFIG_ID || '';
+const META_WHATSAPP_CONFIG_ID = process.env.META_WHATSAPP_CONFIG_ID || META_LOGIN_CONFIG_ID;
 const META_APP_SECRET = process.env.META_APP_SECRET || '';
 const META_GRAPH_VERSION = 'v26.0';
 const APP_ORIGIN = process.env.CRM_PUBLIC_ORIGIN || 'https://app.segmenta.online';
@@ -385,6 +386,11 @@ module.exports = async function handler(req, res) {
             app_secret_configured: Boolean(META_APP_SECRET),
             ready: Boolean(META_APP_ID && META_LOGIN_CONFIG_ID && META_APP_SECRET)
           },
+          whatsapp_embedded_signup: {
+            app_id: META_APP_ID,
+            config_id: META_WHATSAPP_CONFIG_ID || null,
+            ready: Boolean(META_APP_ID && META_WHATSAPP_CONFIG_ID && META_APP_SECRET)
+          },
           meta_webhook: {
             delivery_detected: Boolean(webhookReceipts?.[0]?.received_at),
             last_delivery_at: webhookReceipts?.[0]?.received_at || null,
@@ -523,6 +529,110 @@ module.exports = async function handler(req, res) {
           });
           return res.status(400).json({ ok:false, error:String(error.message || 'Validación fallida').slice(0, 300) });
         }
+      }
+
+      if (action === 'complete_whatsapp_embedded_signup') {
+        if (!META_APP_ID || !META_APP_SECRET || !META_WHATSAPP_CONFIG_ID) {
+          return res.status(409).json({ ok:false, code:'WHATSAPP_SIGNUP_NOT_READY', error:'Falta configurar WhatsApp Embedded Signup en Meta.' });
+        }
+        const code = String(req.body?.code || '').trim();
+        const wabaId = String(req.body?.waba_id || req.body?.waba_ids?.[0] || '').trim();
+        const phoneNumberId = String(req.body?.phone_number_id || '').trim();
+        const businessId = String(req.body?.business_id || '').trim() || null;
+        if (!code || !wabaId || !phoneNumberId) {
+          return res.status(400).json({ ok:false, error:'Meta no devolvió WABA, Phone Number ID y código completos.' });
+        }
+
+        const tokenUrl = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`);
+        tokenUrl.searchParams.set('client_id', META_APP_ID);
+        tokenUrl.searchParams.set('client_secret', META_APP_SECRET);
+        tokenUrl.searchParams.set('code', code);
+        tokenUrl.searchParams.set('redirect_uri', '');
+        const tokenResponse = await fetch(tokenUrl.toString(), { headers:{ Accept:'application/json' } });
+        const tokenData = await tokenResponse.json().catch(()=>({}));
+        if (!tokenResponse.ok || !tokenData?.access_token) {
+          return res.status(400).json({ ok:false, error:tokenData?.error?.message || 'Meta no permitió completar WhatsApp Embedded Signup.' });
+        }
+        const accessToken = tokenData.access_token;
+
+        let phone = null;
+        try {
+          phone = await graphRequest(`${phoneNumberId}?fields=id,display_phone_number,verified_name,quality_rating,status`, accessToken);
+        } catch (_) {}
+
+        let subscribed = false, subscriptionError = null;
+        try {
+          const sub = await graphRequest(`${wabaId}/subscribed_apps`, accessToken, { method:'POST' });
+          subscribed = sub?.success !== false;
+        } catch (error) {
+          subscriptionError = String(error.message || error).slice(0,500);
+        }
+
+        const now = new Date().toISOString();
+        const integrations = await sb('crm_integrations?on_conflict=organization_id,provider,integration_type,external_account_id', {
+          method:'POST',
+          headers:{ Prefer:'resolution=merge-duplicates,return=representation' },
+          body:JSON.stringify({
+            organization_id:org.id,
+            provider:'meta',
+            integration_type:'whatsapp_cloud',
+            display_name:phone?.verified_name || phone?.display_phone_number || 'WhatsApp Business',
+            external_account_id:wabaId,
+            status:'connected',
+            credential_encrypted:encryptCredential(accessToken),
+            connected_by:session.sub !== 'legacy-superadmin' ? session.sub : null,
+            connected_at:now,
+            last_sync_at:now,
+            last_error:subscriptionError,
+            metadata:{
+              source:'whatsapp_embedded_signup',
+              business_id:businessId,
+              waba_id:wabaId,
+              phone_number_id:phoneNumberId,
+              display_phone_number:phone?.display_phone_number || null,
+              verified_name:phone?.verified_name || null,
+              phone_status:phone?.status || null,
+              quality_rating:phone?.quality_rating || null,
+              webhook_subscribed:subscribed,
+              token_type:tokenData.token_type || null
+            },
+            updated_at:now
+          })
+        });
+        const integration = integrations?.[0] || null;
+
+        const channels = await sb('crm_channels?on_conflict=organization_id,channel_type,external_account_id', {
+          method:'POST',
+          headers:{ Prefer:'resolution=merge-duplicates,return=representation' },
+          body:JSON.stringify({
+            organization_id:org.id,
+            channel_type:'whatsapp',
+            external_account_id:phoneNumberId,
+            external_account_name:phone?.display_phone_number || phone?.verified_name || 'WhatsApp',
+            status:'connected',
+            integration_id:integration?.id || null,
+            metadata:{
+              source:'whatsapp_embedded_signup',
+              messages:true,
+              routing_active:true,
+              waba_id:wabaId,
+              business_id:businessId,
+              display_phone_number:phone?.display_phone_number || null,
+              verified_name:phone?.verified_name || null,
+              subscription_ok:subscribed,
+              subscription_error:subscriptionError,
+              connected_at:now
+            },
+            updated_at:now
+          })
+        });
+        const channel = channels?.[0] || null;
+
+        await audit(session, org.id, 'integration.whatsapp_connected', 'integration', integration?.id, null, {
+          waba_id:wabaId, phone_number_id:phoneNumberId, business_id:businessId, webhook_subscribed:subscribed
+        });
+
+        return res.status(200).json({ ok:true, integration, channel, webhook_subscribed:subscribed });
       }
 
       if (action === 'begin_meta_business') {
