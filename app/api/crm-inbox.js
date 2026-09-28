@@ -5,6 +5,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ejhfersvmjhxzatsobae.s
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const META_PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN || '';
 const META_INSTAGRAM_ACCESS_TOKEN = process.env.META_INSTAGRAM_ACCESS_TOKEN || '';
+const META_WHATSAPP_ACCESS_TOKEN = process.env.META_WHATSAPP_ACCESS_TOKEN || '';
 const META_GRAPH_VERSION = 'v26.0';
 
 async function sb(path, options = {}) {
@@ -40,7 +41,9 @@ function channelName(type) {
 }
 
 function profileTokenFor(type) {
-  return type === 'instagram' ? META_INSTAGRAM_ACCESS_TOKEN : META_PAGE_ACCESS_TOKEN;
+  if (type === 'instagram') return META_INSTAGRAM_ACCESS_TOKEN;
+  if (type === 'whatsapp') return META_WHATSAPP_ACCESS_TOKEN;
+  return META_PAGE_ACCESS_TOKEN;
 }
 
 async function graphGet(path, accessToken) {
@@ -116,6 +119,7 @@ async function resolveMetaAccessToken(channel, organizationId) {
       } catch (_) {}
       return integrationToken;
     }
+    if (channel?.channel_type === 'whatsapp') return integrationToken;
   }
   return profileTokenFor(channel?.channel_type);
 }
@@ -124,29 +128,39 @@ async function sendMetaText(conversation, organizationId, text) {
   const channel = conversation?.channel;
   const contact = conversation?.contact;
   if (!channel || !contact?.external_user_id) throw new Error('La conversación no tiene destinatario válido.');
-  if (!['facebook_messenger','instagram'].includes(channel.channel_type)) {
+  if (!['facebook_messenger','instagram','whatsapp'].includes(channel.channel_type)) {
     throw new Error('Este canal todavía no admite respuestas desde el CRM.');
   }
 
   const accessToken = await resolveMetaAccessToken(channel, organizationId);
   if (!accessToken) throw new Error('No hay una credencial activa de Meta para responder desde este canal.');
 
-  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(channel.external_account_id)}/messages`);
+  const url = new URL('https://graph.facebook.com/' + META_GRAPH_VERSION + '/' + encodeURIComponent(channel.external_account_id) + '/messages');
+  const payload = channel.channel_type === 'whatsapp'
+    ? {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: contact.external_user_id,
+        type: 'text',
+        text: { preview_url: false, body: text }
+      }
+    : {
+        recipient: { id: contact.external_user_id },
+        message: { text }
+      };
+
   const response = await fetch(url.toString(), {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: 'Bearer ' + accessToken,
       'Content-Type': 'application/json',
       Accept: 'application/json'
     },
-    body: JSON.stringify({
-      recipient: { id: contact.external_user_id },
-      message: { text }
-    })
+    body: JSON.stringify(payload)
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data?.error) {
-    const message = data?.error?.message || `Meta no pudo enviar el mensaje (${response.status})`;
+    const message = data?.error?.message || ('Meta no pudo enviar el mensaje (' + response.status + ')');
     const error = new Error(message);
     error.metaCode = data?.error?.code ?? null;
     throw error;
