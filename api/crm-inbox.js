@@ -45,7 +45,7 @@ function profileTokenFor(type) {
 
 async function graphGet(path, accessToken) {
   if (!accessToken) return null;
-  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${String(path).replace(/^\\//,'')}`);
+  const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${String(path).replace(/^[/]+/,'')}`);
   const response = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
   });
