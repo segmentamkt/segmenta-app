@@ -281,11 +281,12 @@
     return fbSdkPromise;
   }
 
-  async function finishWhatsAppEmbeddedSignup(){
-    if(waSignupSubmitting||!waSignupCode||!waSignupSession)return;
+  async function finishWhatsAppEmbeddedSignup(force=false){
+    if(waSignupSubmitting||!waSignupCode)return;
+    if(!waSignupSession&&!force)return;
     waSignupSubmitting=true;
     try{
-      const d=waSignupSession.data||waSignupSession;
+      const d=waSignupSession?.data||waSignupSession||{};
       const payload={
         action:'complete_whatsapp_embedded_signup',
         code:waSignupCode,
@@ -296,7 +297,12 @@
       };
       const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       const j=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(j.error||'No fue posible completar la conexión de WhatsApp');
+      if(!r.ok){
+        const detail=j.candidates?.length
+          ? ' · '+j.candidates.map(x=>(x.display_phone_number||x.verified_name||x.phone_number_id)).join(', ')
+          : '';
+        throw new Error((j.error||'No fue posible completar la conexión de WhatsApp')+detail);
+      }
       window.toast?.('WhatsApp conectado correctamente');
       waSignupCode=null;waSignupSession=null;
       await loadHub();
@@ -333,6 +339,7 @@
         if(response?.authResponse?.code){
           waSignupCode=response.authResponse.code;
           finishWhatsAppEmbeddedSignup();
+          setTimeout(()=>finishWhatsAppEmbeddedSignup(true),1200);
         }else{
           window.toast?.('La conexión de WhatsApp fue cancelada o no devolvió autorización.');
         }
@@ -343,7 +350,8 @@
         override_default_response_type:true,
         extras:{
           sessionInfoVersion:'3',
-          version:'v4'
+          version:'v4',
+          featureType:'whatsapp_business_app_onboarding'
         }
       });
     }catch(err){
