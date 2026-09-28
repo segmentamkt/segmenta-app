@@ -61,6 +61,20 @@ async function safeGraph(path, accessToken) {
   catch (_) { return null; }
 }
 
+async function getMetaAppConfigurations() {
+  if (!META_APP_ID || !META_APP_SECRET) return [];
+  try {
+    const appToken = `${META_APP_ID}|${META_APP_SECRET}`;
+    const data = await graphRequest(`${META_APP_ID}?fields=config_ids`, appToken);
+    return Array.isArray(data?.config_ids) ? data.config_ids.map(x => ({
+      id: String(x?.id || ''),
+      name: x?.name || null
+    })).filter(x => x.id) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 const AI_PROVIDERS = {
   openai: {
     label: 'OpenAI',
@@ -403,10 +417,11 @@ module.exports = async function handler(req, res) {
     if (!canManageIntegrations(session)) return res.status(403).json({ ok: false, error: 'Solo el dueño de la empresa o el Host pueden gestionar integraciones' });
 
     if (req.method === 'GET') {
-      const [integrations, channels, webhookReceipts] = await Promise.all([
+      const [integrations, channels, webhookReceipts, metaAppConfigs] = await Promise.all([
         sb(`crm_integrations?organization_id=eq.${org.id}&select=id,provider,integration_type,display_name,external_account_id,status,metadata,connected_at,last_sync_at,last_error,created_at,updated_at&order=provider.asc,created_at.desc`),
         sb(`crm_channels?organization_id=eq.${org.id}&select=id,channel_type,external_account_id,external_account_name,status,integration_id,metadata,updated_at&order=channel_type.asc`),
-        sb('meta_webhook_receipts?object_type=eq.page&select=received_at,result,signature_valid,event_count&order=received_at.desc&limit=1')
+        sb('meta_webhook_receipts?object_type=eq.page&select=received_at,result,signature_valid,event_count&order=received_at.desc&limit=1'),
+        getMetaAppConfigurations()
       ]);
       return res.status(200).json({
         ok: true,
@@ -423,7 +438,8 @@ module.exports = async function handler(req, res) {
           whatsapp_embedded_signup: {
             app_id: META_APP_ID,
             config_id: META_WHATSAPP_CONFIG_ID || null,
-            ready: Boolean(META_APP_ID && META_WHATSAPP_CONFIG_ID && META_APP_SECRET)
+            ready: Boolean(META_APP_ID && META_WHATSAPP_CONFIG_ID && META_APP_SECRET),
+            app_configurations: metaAppConfigs || []
           },
           meta_webhook: {
             delivery_detected: Boolean(webhookReceipts?.[0]?.received_at),
