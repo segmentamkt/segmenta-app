@@ -139,6 +139,40 @@ async function validateAiCredential(provider, key) {
   }
 }
 
+async function discoverWhatsAppAssets(accessToken) {
+  const businessesResp = await safeGraph('me/businesses?fields=id,name&limit=50', accessToken);
+  const businesses = Array.isArray(businessesResp?.data) ? businessesResp.data : [];
+  const candidates = [];
+  const seenPhones = new Set();
+
+  for (const business of businesses) {
+    if (!business?.id) continue;
+    for (const edge of ['owned_whatsapp_business_accounts','client_whatsapp_business_accounts']) {
+      const wabasResp = await safeGraph(`${business.id}/${edge}?fields=id,name&limit=100`, accessToken);
+      for (const waba of (wabasResp?.data || [])) {
+        if (!waba?.id) continue;
+        const phonesResp = await safeGraph(`${waba.id}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,status&limit=100`, accessToken);
+        for (const phone of (phonesResp?.data || [])) {
+          if (!phone?.id || seenPhones.has(String(phone.id))) continue;
+          seenPhones.add(String(phone.id));
+          candidates.push({
+            business_id:String(business.id),
+            business_name:business.name || null,
+            waba_id:String(waba.id),
+            waba_name:waba.name || null,
+            phone_number_id:String(phone.id),
+            display_phone_number:phone.display_phone_number || null,
+            verified_name:phone.verified_name || null,
+            quality_rating:phone.quality_rating || null,
+            status:phone.status || null
+          });
+        }
+      }
+    }
+  }
+  return candidates;
+}
+
 async function debugToken(accessToken) {
   try {
     const url = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token`);
@@ -532,15 +566,21 @@ module.exports = async function handler(req, res) {
       }
 
       if (action === 'complete_whatsapp_embedded_signup') {
+        await audit(session, org.id, 'integration.whatsapp_signup_started', 'integration', null, null, {
+          has_code:Boolean(req.body?.code),
+          has_waba:Boolean(req.body?.waba_id || req.body?.waba_ids?.[0]),
+          has_phone:Boolean(req.body?.phone_number_id),
+          has_business:Boolean(req.body?.business_id)
+        });
         if (!META_APP_ID || !META_APP_SECRET || !META_WHATSAPP_CONFIG_ID) {
           return res.status(409).json({ ok:false, code:'WHATSAPP_SIGNUP_NOT_READY', error:'Falta configurar WhatsApp Embedded Signup en Meta.' });
         }
         const code = String(req.body?.code || '').trim();
-        const wabaId = String(req.body?.waba_id || req.body?.waba_ids?.[0] || '').trim();
-        const phoneNumberId = String(req.body?.phone_number_id || '').trim();
-        const businessId = String(req.body?.business_id || '').trim() || null;
-        if (!code || !wabaId || !phoneNumberId) {
-          return res.status(400).json({ ok:false, error:'Meta no devolvió WABA, Phone Number ID y código completos.' });
+        let wabaId = String(req.body?.waba_id || req.body?.waba_ids?.[0] || '').trim();
+        let phoneNumberId = String(req.body?.phone_number_id || '').trim();
+        let businessId = String(req.body?.business_id || '').trim() || null;
+        if (!code) {
+          return res.status(400).json({ ok:false, error:'Meta no devolvió el código de autorización.' });
         }
 
         const tokenUrl = new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`);
@@ -554,6 +594,39 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ ok:false, error:tokenData?.error?.message || 'Meta no permitió completar WhatsApp Embedded Signup.' });
         }
         const accessToken = tokenData.access_token;
+
+        let discoveredCandidates = [];
+        if (!wabaId || !phoneNumberId) {
+          discoveredCandidates = await discoverWhatsAppAssets(accessToken);
+          if (wabaId && !phoneNumberId) {
+            const sameWaba = discoveredCandidates.filter(x => x.waba_id === wabaId);
+            if (sameWaba.length === 1) {
+              phoneNumberId = sameWaba[0].phone_number_id;
+              businessId = businessId || sameWaba[0].business_id;
+            }
+          }
+          if ((!wabaId || !phoneNumberId) && discoveredCandidates.length === 1) {
+            wabaId = discoveredCandidates[0].waba_id;
+            phoneNumberId = discoveredCandidates[0].phone_number_id;
+            businessId = businessId || discoveredCandidates[0].business_id;
+          }
+          if (!wabaId || !phoneNumberId) {
+            await audit(session, org.id, 'integration.whatsapp_signup_incomplete', 'integration', null, null, {
+              candidates: discoveredCandidates.map(x => ({
+                business_id:x.business_id,waba_id:x.waba_id,phone_number_id:x.phone_number_id,
+                display_phone_number:x.display_phone_number,verified_name:x.verified_name
+              }))
+            });
+            return res.status(409).json({
+              ok:false,
+              code:discoveredCandidates.length ? 'WHATSAPP_ASSET_AMBIGUOUS' : 'WHATSAPP_ASSETS_NOT_FOUND',
+              error:discoveredCandidates.length
+                ? 'Meta autorizó WhatsApp, pero devolvió más de un número y no indicó cuál seleccionaste.'
+                : 'Meta autorizó el acceso, pero el token no permite descubrir ningún número de WhatsApp Business.',
+              candidates:discoveredCandidates
+            });
+          }
+        }
 
         let phone = null;
         try {
