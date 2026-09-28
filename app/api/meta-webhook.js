@@ -245,7 +245,11 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ ok: false, error: 'Invalid signature' });
     }
     const objectType = String(payload.object || '').toLowerCase();
-    const channelType = objectType === 'instagram' ? 'instagram' : 'facebook_messenger';
+    const channelType = objectType === 'instagram'
+      ? 'instagram'
+      : objectType === 'whatsapp_business_account'
+        ? 'whatsapp'
+        : 'facebook_messenger';
     const leadEvents = [];
     const messageEvents = [];
 
@@ -254,21 +258,54 @@ module.exports = async function handler(req, res) {
         if (change.field === 'leadgen') {
           leadEvents.push({ page_id: entry.id || null, time: entry.time || null, ...change.value });
         }
+
+        if (objectType === 'whatsapp_business_account' && change.field === 'messages') {
+          const value = change.value || {};
+          const phoneNumberId = value?.metadata?.phone_number_id || null;
+          for (const message of (value.messages || [])) {
+            const type = String(message?.type || 'text');
+            const media = ['image','video','audio','document','sticker'].includes(type) ? message?.[type] || {} : {};
+            const attachments = Object.keys(media).length ? [{
+              type,
+              id: media.id || null,
+              mime_type: media.mime_type || null,
+              filename: media.filename || null,
+              caption: media.caption || null
+            }] : [];
+            const interactiveText = message?.interactive?.button_reply?.title || message?.interactive?.list_reply?.title || null;
+            const buttonText = message?.button?.text || null;
+            messageEvents.push({
+              channel_type: 'whatsapp',
+              account_id: phoneNumberId,
+              sender_id: message?.from || null,
+              recipient_id: phoneNumberId,
+              timestamp: message?.timestamp ? Number(message.timestamp) * 1000 : (entry.time || null),
+              mid: message?.id || null,
+              text: message?.text?.body || interactiveText || buttonText || media.caption || null,
+              attachments,
+              is_echo: false,
+              raw_event: { entry_id: entry.id || null, change }
+            });
+          }
+        }
       }
-      for (const event of entry.messaging || []) {
-        const message = event.message || {};
-        messageEvents.push({
-          channel_type: channelType,
-          account_id: entry.id || event.recipient?.id || null,
-          sender_id: event.sender?.id || null,
-          recipient_id: event.recipient?.id || null,
-          timestamp: event.timestamp || entry.time || null,
-          mid: message.mid || null,
-          text: message.text || null,
-          attachments: message.attachments || [],
-          is_echo: Boolean(message.is_echo),
-          raw_event: event
-        });
+
+      if (objectType !== 'whatsapp_business_account') {
+        for (const event of entry.messaging || []) {
+          const message = event.message || {};
+          messageEvents.push({
+            channel_type: channelType,
+            account_id: entry.id || event.recipient?.id || null,
+            sender_id: event.sender?.id || null,
+            recipient_id: event.recipient?.id || null,
+            timestamp: event.timestamp || entry.time || null,
+            mid: message.mid || null,
+            text: message.text || null,
+            attachments: message.attachments || [],
+            is_echo: Boolean(message.is_echo),
+            raw_event: event
+          });
+        }
       }
     }
 
