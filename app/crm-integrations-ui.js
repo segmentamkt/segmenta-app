@@ -147,8 +147,12 @@
     if(item.id==='webchat'){
       return `<button class="integration-action" type="button" onclick="openIntegrationConfig('webchat')">Configurar</button>`;
     }
-    if(item.id==='whatsapp'&&state.status==='connected'){
-      return `<button class="integration-action" type="button" onclick="openIntegrationConfig('whatsapp')">Configurar</button>`;
+    if(item.id==='whatsapp'){
+      if(state.status==='connected'){
+        return `<button class="integration-action" type="button" onclick="openIntegrationConfig('whatsapp')">Configurar</button>
+          <button class="integration-action" type="button" onclick="beginWhatsAppEmbeddedSignup()">＋ Conectar otro número</button>`;
+      }
+      return `<button class="integration-action primary" type="button" onclick="beginWhatsAppEmbeddedSignup()">Conectar WhatsApp</button>`;
     }
     return `<button class="integration-action primary" type="button" disabled>Disponible próximamente</button>`;
   }
@@ -243,6 +247,108 @@
   window.closeIntegrationConfig=function(){document.getElementById('integrationConfigModal')?.classList.add('hidden')};
   window.addMetaChannel=function(){
     if(typeof window.beginMetaBusinessConnection==='function')window.beginMetaBusinessConnection();
+  };
+
+  let waSignupCode=null,waSignupSession=null,waSignupSubmitting=false,fbSdkPromise=null;
+
+  function ensureFacebookSdk(appId){
+    if(window.FB){
+      try{window.FB.init({appId:String(appId),autoLogAppEvents:true,xfbml:false,version:'v26.0'})}catch(_){}
+      return Promise.resolve(window.FB);
+    }
+    if(fbSdkPromise)return fbSdkPromise;
+    fbSdkPromise=new Promise((resolve,reject)=>{
+      const previous=window.fbAsyncInit;
+      window.fbAsyncInit=function(){
+        try{if(typeof previous==='function')previous()}catch(_){}
+        try{
+          window.FB.init({appId:String(appId),autoLogAppEvents:true,xfbml:false,version:'v26.0'});
+          resolve(window.FB);
+        }catch(err){reject(err)}
+      };
+      let script=document.getElementById('facebook-jssdk');
+      if(!script){
+        script=document.createElement('script');
+        script.id='facebook-jssdk';
+        script.async=true;script.defer=true;script.crossOrigin='anonymous';
+        script.src='https://connect.facebook.net/es_LA/sdk.js';
+        script.onerror=()=>reject(new Error('No fue posible cargar Facebook SDK'));
+        document.head.appendChild(script);
+      }
+      setTimeout(()=>{if(window.FB){try{window.FB.init({appId:String(appId),autoLogAppEvents:true,xfbml:false,version:'v26.0'});resolve(window.FB)}catch(_){}}},1200);
+      setTimeout(()=>{if(!window.FB)reject(new Error('Facebook SDK no respondió'))},12000);
+    });
+    return fbSdkPromise;
+  }
+
+  async function finishWhatsAppEmbeddedSignup(){
+    if(waSignupSubmitting||!waSignupCode||!waSignupSession)return;
+    waSignupSubmitting=true;
+    try{
+      const d=waSignupSession.data||waSignupSession;
+      const payload={
+        action:'complete_whatsapp_embedded_signup',
+        code:waSignupCode,
+        waba_id:d.waba_id||null,
+        waba_ids:d.waba_ids||null,
+        phone_number_id:d.phone_number_id||null,
+        business_id:d.business_id||null
+      };
+      const r=await fetch('/api/crm-integrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'No fue posible completar la conexión de WhatsApp');
+      window.toast?.('WhatsApp conectado correctamente');
+      waSignupCode=null;waSignupSession=null;
+      await loadHub();
+      setTimeout(()=>openIntegrationConfig('whatsapp'),80);
+    }catch(err){
+      window.toast?.(err.message||'No fue posible completar WhatsApp');
+    }finally{waSignupSubmitting=false}
+  }
+
+  function whatsappSessionListener(event){
+    if(!String(event.origin||'').endsWith('facebook.com'))return;
+    try{
+      const data=typeof event.data==='string'?JSON.parse(event.data):event.data;
+      if(data?.type!=='WA_EMBEDDED_SIGNUP')return;
+      if(data?.data?.current_step){
+        return;
+      }
+      waSignupSession=data;
+      finishWhatsAppEmbeddedSignup();
+    }catch(_){}
+  }
+  window.addEventListener('message',whatsappSessionListener);
+
+  window.beginWhatsAppEmbeddedSignup=async function(){
+    const cfg=hubState.capabilities?.whatsapp_embedded_signup||{};
+    if(!cfg.ready||!cfg.app_id||!cfg.config_id){
+      window.toast?.('Falta crear/configurar WhatsApp Embedded Signup en Meta para esta app.');
+      return;
+    }
+    waSignupCode=null;waSignupSession=null;waSignupSubmitting=false;
+    try{
+      const FB=await ensureFacebookSdk(cfg.app_id);
+      FB.login(function(response){
+        if(response?.authResponse?.code){
+          waSignupCode=response.authResponse.code;
+          finishWhatsAppEmbeddedSignup();
+        }else{
+          window.toast?.('La conexión de WhatsApp fue cancelada o no devolvió autorización.');
+        }
+      },{
+        config_id:String(cfg.config_id),
+        auth_type:'rerequest',
+        response_type:'code',
+        override_default_response_type:true,
+        extras:{
+          sessionInfoVersion:'3',
+          version:'v4'
+        }
+      });
+    }catch(err){
+      window.toast?.(err.message||'No fue posible abrir WhatsApp Embedded Signup');
+    }
   };
 
   window.toggleAIKeyVisibility=function(){
